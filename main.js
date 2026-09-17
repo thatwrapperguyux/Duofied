@@ -51,12 +51,21 @@ const outerUIFrame = new THREE.Vector4(.23396, .27173 - 5.8974, 7.73936, 11.2513
   .multiplyScalar((uiReferenceEye.z - .24948) / (uiReferenceEye.z - .825538));
 const defaultUIs = await loadDefaultUIs();
 let uiTheme = 'wallpaper';
-const uiCanvas = document.createElement('canvas');
-uiCanvas.width = 1600;
-uiCanvas.height = 1125;
-const uiTexture = new THREE.CanvasTexture(uiCanvas);
-uiTexture.colorSpace = THREE.SRGBColorSpace;
-uiTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+let defaultTheme = 'wallpaper';
+// Custom mode holds one image per screen: the closed cover (outer) and the open display (inner).
+// Each entry is the object URL of that screen's image, or null while the screen has none.
+const customSources = { inner: null, outer: null };
+const customCanvases = {};
+const customTextures = {};
+for (const [kind, size] of Object.entries({ inner: [1600, 1125], outer: [774, 1125] })) {
+  const canvas = document.createElement('canvas');
+  [canvas.width, canvas.height] = size;
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  customCanvases[kind] = canvas;
+  customTextures[kind] = texture;
+}
 for (const kind of ['inner', 'outer']) {
   const defaultTextures = {};
   for (const [theme, canvases] of Object.entries(defaultUIs)) {
@@ -74,55 +83,85 @@ for (const kind of ['inner', 'outer']) {
   };
 }
 const uiInput = document.querySelector('#ui-upload');
-uiInput.addEventListener('change', async () => {
-  const file = uiInput.files[0];
-  if (!file) return;
-  const url = URL.createObjectURL(file);
-  const img = new Image();
-  img.src = url;
-  try {
-    await img.decode();
-    const c = uiCanvas.getContext('2d');
-    c.fillStyle = '#101418';
-    c.fillRect(0, 0, uiCanvas.width, uiCanvas.height);
-    const scale = Math.min(uiCanvas.width / img.width, uiCanvas.height / img.height);
-    const width = img.width * scale, height = img.height * scale;
-    c.drawImage(img, (uiCanvas.width - width) / 2, (uiCanvas.height - height) / 2, width, height);
-    uiTexture.needsUpdate = true;
-    for (const [kind, screen] of Object.entries(screens)) {
-      screen.material.map = uiTexture;
-      screen.pixel.value.set(1 / uiCanvas.width, 1 / uiCanvas.height);
-      screen.frame.value.copy(innerUIFrame);
-      screen.gradient.value.set(.5, kind === 'inner' ? 0 : 1);
-    }
-    uiTheme = 'custom';
-    document.querySelectorAll('[data-ui-theme]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.uiTheme === uiTheme)));
-    setPlaying(false);
-    transition = { from: angle, to: 180, elapsed: 0 };
-  } catch {
-    alert('Unable to read this image. Choose a PNG, JPG, or WebP file.');
-  } finally {
-    URL.revokeObjectURL(url);
-    uiInput.value = '';
-  }
-});
-function showDefaultUI() {
+const customPanel = document.querySelector('#custom-screens');
+const customSlots = Object.fromEntries(['inner', 'outer'].map(kind =>
+  [kind, document.querySelector(`.custom-slot[data-custom-screen="${kind}"]`)]));
+let uploadTarget = 'outer';
+
+function drawContainedImage(canvas, image) {
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#101418';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  const scale = Math.min(canvas.width / image.width, canvas.height / image.height);
+  const width = image.width * scale, height = image.height * scale;
+  context.drawImage(image, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
+}
+function setCustomSource(kind, url) {
+  const previous = customSources[kind];
+  if (previous) URL.revokeObjectURL(previous);
+  customSources[kind] = url;
+  const slot = customSlots[kind];
+  slot.classList.toggle('filled', Boolean(url));
+  slot.querySelector('.custom-slot-preview').style.backgroundImage = url ? `url("${url}")` : '';
+  slot.querySelector('.custom-slot-state').textContent = url ? 'Replace image' : 'Add image';
+  slot.querySelector('.custom-slot-clear').hidden = !url;
+}
+// Each screen draws its own custom image; a screen left without one keeps the selected layout.
+function applyScreens() {
   for (const [kind, screen] of Object.entries(screens)) {
-    const texture = screen.defaultTextures[uiTheme];
+    const custom = uiTheme === 'custom' && customSources[kind];
+    const texture = custom ? customTextures[kind] : screen.defaultTextures[defaultTheme];
     screen.material.map = texture;
     screen.pixel.value.set(1 / texture.image.width, 1 / texture.image.height);
     screen.frame.value.copy(kind === 'inner' ? innerUIFrame : outerUIFrame);
     screen.gradient.value.set(kind === 'inner' ? .5 : 0, kind === 'inner' ? 0 : 1);
   }
+  syncThemeButtons();
+}
+function syncThemeButtons() {
   document.querySelectorAll('[data-ui-theme]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.uiTheme === uiTheme)));
+  customPanel.hidden = uiTheme !== 'custom';
+}
+function pickCustomImage(kind) {
+  uploadTarget = kind;
+  uiInput.click();
+}
+uiInput.addEventListener('change', async () => {
+  const file = uiInput.files[0];
+  uiInput.value = '';
+  if (!file) return;
+  const kind = uploadTarget;
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.src = url;
+  try {
+    await img.decode();
+    setCustomSource(kind, url);
+    drawContainedImage(customCanvases[kind], img);
+    customTextures[kind].needsUpdate = true;
+    uiTheme = 'custom';
+    applyScreens();
+    setPlaying(false);
+    // Fold towards the screen this image belongs to.
+    transition = { from: angle, to: kind === 'inner' ? 180 : 0, elapsed: 0 };
+  } catch {
+    URL.revokeObjectURL(url);
+    alert('Unable to read this image. Choose a PNG, JPG, or WebP file.');
+  }
+});
+for (const [kind, slot] of Object.entries(customSlots)) {
+  slot.querySelector('.custom-slot-pick').addEventListener('click', () => pickCustomImage(kind));
+  slot.querySelector('.custom-slot-clear').addEventListener('click', () => {
+    setCustomSource(kind, null);
+    applyScreens();
+  });
 }
 document.querySelectorAll('[data-ui-theme]').forEach(button => button.addEventListener('click', () => {
-  if (button.dataset.uiTheme === 'custom') {
-    uiInput.click();
-    return;
-  }
   uiTheme = button.dataset.uiTheme;
-  showDefaultUI();
+  if (uiTheme !== 'custom') defaultTheme = uiTheme;
+  applyScreens();
+  // Offer the closed screen first when custom mode has no images yet.
+  if (uiTheme === 'custom' && !customSources.inner && !customSources.outer) pickCustomImage('outer');
 }));
 
 function setPlaying(value) {
@@ -157,6 +196,8 @@ function resize() {
   camera.updateProjectionMatrix();
 }
 new ResizeObserver(resize).observe(viewport);
+const dock = document.querySelector('.control-dock');
+new ResizeObserver(() => document.documentElement.style.setProperty('--dock-height', `${dock.offsetHeight}px`)).observe(dock);
 
 const screenShader = `
 uniform float foldAngle;
@@ -310,7 +351,7 @@ try {
     count[flexible ? 'flexible' : moving ? 'moving' : 'fixed']++;
   });
   console.info('Official model ready', JSON.stringify({ ...count, sourceMeshes: phone.children.length, innerUI: true, outerUI: true, fixedHalf: 'rear camera' }));
-  showDefaultUI();
+  applyScreens();
   document.querySelectorAll('button, input').forEach(element => element.disabled = false);
   ready = true;
   setAngle(180);

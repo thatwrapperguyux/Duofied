@@ -5,7 +5,7 @@ button,input{-webkit-tap-highlight-color:transparent}
 button{font:inherit;cursor:pointer}
 button:disabled{cursor:wait;opacity:.35}
 main{height:100dvh;position:relative}
-#viewport{position:absolute;inset:0 0 154px;touch-action:none}
+#viewport{position:absolute;inset:0 0 calc(var(--dock-height,102px) + 52px);touch-action:none}
 canvas{display:block;outline:none}
 .github-link{position:absolute;top:calc(16px + env(safe-area-inset-top));right:calc(16px + env(safe-area-inset-right));z-index:1;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;color:#262c24;transition:background .2s,color .2s}
 .github-link svg{width:24px;height:24px;fill:currentColor}
@@ -29,17 +29,41 @@ button:focus-visible,.github-link:focus-visible{outline:2px solid #8fa077;outlin
 .ui-themes{display:flex;gap:4px;padding:3px;background:#ecefe6;border-radius:9px}
 .ui-themes button{flex:1;border:0;border-radius:6px;padding:7px 4px;font-size:10px;color:#818974;background:transparent}
 .ui-themes button[aria-selected=true]{background:#fff;color:#45533b;box-shadow:0 1px 3px #53624712}
+.custom-screens{display:grid;gap:6px;margin-top:8px}
+.custom-screens[hidden]{display:none}
+.custom-slot{position:relative}
+.custom-slot-pick{display:flex;align-items:center;gap:8px;width:100%;min-height:46px;padding:6px 8px;border:1px solid #e2e6dc;border-radius:9px;background:#f4f6f0;color:#45533b;text-align:left;transition:background .2s,border-color .2s}
+.custom-slot-pick:hover{background:#fff;border-color:#c9d2bd}
+.custom-slot.filled .custom-slot-pick{padding-right:30px}
+.custom-slot-preview{flex-shrink:0;border-radius:4px;background:#dfe3d8 center/cover no-repeat;box-shadow:inset 0 0 0 1px #0000000f}
+.custom-slot.filled .custom-slot-preview{background-color:#101418}
+.custom-slot[data-custom-screen=outer] .custom-slot-preview{width:19px;height:28px}
+.custom-slot[data-custom-screen=inner] .custom-slot-preview{width:28px;height:20px}
+.custom-slot-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.custom-slot-title{font-size:10px;font-weight:500;white-space:nowrap}
+.custom-slot-state{font-size:9px;color:#858d78;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.custom-slot-clear{position:absolute;top:50%;right:6px;transform:translateY(-50%);width:20px;height:20px;padding:0;border:0;border-radius:50%;background:#e6e9e0;color:#5c6650;display:grid;place-items:center;transition:background .2s,color .2s}
+.custom-slot-clear:hover{background:#d7dccd;color:#2f3a28}
+.custom-slot-clear[hidden]{display:none}
+.custom-slot-clear svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
 @media(max-width:700px){
   .control-dock{width:calc(100% - 32px);bottom:calc(16px + env(safe-area-inset-bottom));padding:16px;gap:16px;flex-direction:column;align-items:stretch}
   .screen-panel{width:auto}
   .panel-heading{margin-bottom:8px}
   .ui-themes button{min-height:40px;font-size:12px}
-  #viewport{inset:env(safe-area-inset-top) 0 calc(220px + env(safe-area-inset-bottom))}
+  .custom-screens{grid-template-columns:1fr 1fr;gap:8px}
+  .custom-slot-pick{min-height:52px}
+  .custom-slot-title{font-size:11px}
+  .custom-slot-state{font-size:10px}
+  .custom-slot.filled .custom-slot-pick{padding-right:34px}
+  .custom-slot-clear{width:24px;height:24px}
+  .custom-slot-clear svg{width:13px;height:13px}
+  #viewport{inset:env(safe-area-inset-top) 0 calc(var(--dock-height,180px) + 40px + env(safe-area-inset-bottom))}
   .controls{flex:none;gap:16px;padding:16px 0 0;border-left:0;border-top:1px solid #e5e8df}
   .play{width:44px;height:44px}
 }
 @media(max-height:650px) and (min-width:701px){
-  #viewport{inset:0 0 125px}
+  #viewport{inset:0 0 calc(var(--dock-height,102px) + 23px)}
   .control-dock{bottom:20px}
 }
 @media(max-height:500px) and (min-width:540px){
@@ -47,5 +71,7 @@ button:focus-visible,.github-link:focus-visible{outline:2px solid #8fa077;outlin
   .screen-panel{width:180px}
   .controls{flex:1;gap:16px;padding:0 0 0 18px;border-top:0;border-left:1px solid #e5e8df}
   .ui-themes button{min-height:36px}
-  #viewport{inset:env(safe-area-inset-top) 0 calc(140px + env(safe-area-inset-bottom))}
+  .custom-screens{grid-template-columns:1fr;gap:6px}
+  .custom-slot-pick{min-height:40px}
+  #viewport{inset:env(safe-area-inset-top) 0 calc(var(--dock-height,110px) + 30px + env(safe-area-inset-bottom))}
 }

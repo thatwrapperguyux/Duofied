@@ -9,7 +9,7 @@ A browser-based study of foldable screen transitions, built with Three.js.
 - Only the cover half rotates; the rear-camera half stays fixed.
 - Screen content uses a fixed front-view projection during folding. The outer UI stays aligned with its hinge-side left edge.
 - Blur and darkening follow the image coordinates, including the image edges. Maximum blur radius is 72 source pixels; darkening uses twice the transition strength, capped at black.
-- Wallpaper, Launcher, and Custom modes. Custom opens the image picker directly and applies one image to both screens; the outer screen shows the image's right half.
+- Wallpaper, Launcher, and Custom modes. Custom keeps one image per screen: Screen 1 for the closed cover and Screen 2 for the open display. A screen left without an image keeps the selected default layout.
 - Drag to orbit, scroll to zoom, or use the play button and slider to fold the device.
 - Responsive controls for desktop and mobile. Uploaded images stay in the current browser tab.
 
@@ -37,7 +37,16 @@ The preparation script downloads the original Star White USDZ and UI images from
 
 ## Screen controls
 
-Choose **Wallpaper** or **Launcher** for the default screen layouts. Choose **Custom** to select an image. The inner screen contains the whole image; the outer screen crops to the right-hand portion and aligns that portion to its left edge. Recommended image size: 2670 × 1878.
+Choose **Wallpaper** or **Launcher** for the default screen layouts. Choose **Custom** to use your own images.
+
+Custom has one section per screen:
+
+| Section | Screen | Recommended image size |
+| --- | --- | --- |
+| Screen 1 · Closed | The cover display, seen while the device is folded | 1292 × 1878 |
+| Screen 2 · Open | The inner display, seen while the device is open | 2670 × 1878 |
+
+Each section takes its own image, shows a thumbnail once one is set, and clears it with the × button. Adding an image folds the device towards that screen so the result is visible right away. Each image is centred and fitted inside its screen, and a section left empty keeps the layout chosen under Wallpaper or Launcher.
 
 The slider controls the fold from closed to open. The default view is fully open and paused. The outer screen turns off at full opening.
 

@@ -18,6 +18,16 @@
     <aside class="screen-panel" aria-label="Screen UI">
       <div class="panel-heading"><h2>Screen UI</h2></div>
       <div class="ui-themes" role="tablist" aria-label="Screen UI type"><button role="tab" data-ui-theme="wallpaper" aria-selected="true" disabled>Wallpaper</button><button role="tab" data-ui-theme="launcher" aria-selected="false" disabled>Launcher</button><button role="tab" data-ui-theme="custom" aria-selected="false" disabled>Custom</button></div>
+      <div class="custom-screens" id="custom-screens" role="group" aria-label="Custom screen images" hidden>
+        <div class="custom-slot" data-custom-screen="outer">
+          <button class="custom-slot-pick" type="button" disabled><span class="custom-slot-preview"></span><span class="custom-slot-text"><span class="custom-slot-title">Screen 1 &middot; Closed</span><span class="custom-slot-state">Add image</span></span></button>
+          <button class="custom-slot-clear" type="button" aria-label="Remove the closed screen image" hidden disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+        </div>
+        <div class="custom-slot" data-custom-screen="inner">
+          <button class="custom-slot-pick" type="button" disabled><span class="custom-slot-preview"></span><span class="custom-slot-text"><span class="custom-slot-title">Screen 2 &middot; Open</span><span class="custom-slot-state">Add image</span></span></button>
+          <button class="custom-slot-clear" type="button" aria-label="Remove the open screen image" hidden disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+        </div>
+      </div>
       <input id="ui-upload" type="file" accept="image/*" hidden disabled>
     </aside>
     <section class="controls" aria-label="Fold animation controls">
