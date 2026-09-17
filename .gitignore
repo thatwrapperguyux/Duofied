@@ -1,0 +1,6 @@
+.vercel
+.env*
+.DS_Store
+/assets/
+/.venv/
+__pycache__/
