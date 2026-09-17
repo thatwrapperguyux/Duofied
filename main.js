@@ -96,15 +96,30 @@ function drawContainedImage(canvas, image) {
   const width = image.width * scale, height = image.height * scale;
   context.drawImage(image, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
 }
-function setCustomSource(kind, url) {
-  const previous = customSources[kind];
-  if (previous) URL.revokeObjectURL(previous);
-  customSources[kind] = url;
-  const slot = customSlots[kind];
+function syncSlot(slot, url) {
   slot.classList.toggle('filled', Boolean(url));
   slot.querySelector('.custom-slot-preview').style.backgroundImage = url ? `url("${url}")` : '';
   slot.querySelector('.custom-slot-state').textContent = url ? 'Replace image' : 'Add image';
   slot.querySelector('.custom-slot-clear').hidden = !url;
+}
+function setCustomSource(kind, url) {
+  const previous = customSources[kind];
+  if (previous) URL.revokeObjectURL(previous);
+  customSources[kind] = url;
+  syncSlot(customSlots[kind], url);
+}
+async function readImage(file) {
+  const url = URL.createObjectURL(file);
+  const image = new Image();
+  image.src = url;
+  try {
+    await image.decode();
+    return { image, url };
+  } catch {
+    URL.revokeObjectURL(url);
+    alert('Unable to read this image. Choose a PNG, JPG, or WebP file.');
+    return null;
+  }
 }
 // Each screen draws its own custom image; a screen left without one keeps the selected layout.
 function applyScreens() {
@@ -131,23 +146,16 @@ uiInput.addEventListener('change', async () => {
   uiInput.value = '';
   if (!file) return;
   const kind = uploadTarget;
-  const url = URL.createObjectURL(file);
-  const img = new Image();
-  img.src = url;
-  try {
-    await img.decode();
-    setCustomSource(kind, url);
-    drawContainedImage(customCanvases[kind], img);
-    customTextures[kind].needsUpdate = true;
-    uiTheme = 'custom';
-    applyScreens();
-    setPlaying(false);
-    // Fold towards the screen this image belongs to.
-    transition = { from: angle, to: kind === 'inner' ? 180 : 0, elapsed: 0 };
-  } catch {
-    URL.revokeObjectURL(url);
-    alert('Unable to read this image. Choose a PNG, JPG, or WebP file.');
-  }
+  const source = await readImage(file);
+  if (!source) return;
+  setCustomSource(kind, source.url);
+  drawContainedImage(customCanvases[kind], source.image);
+  customTextures[kind].needsUpdate = true;
+  uiTheme = 'custom';
+  applyScreens();
+  setPlaying(false);
+  // Fold towards the screen this image belongs to.
+  transition = { from: angle, to: kind === 'inner' ? 180 : 0, elapsed: 0 };
 });
 for (const [kind, slot] of Object.entries(customSlots)) {
   slot.querySelector('.custom-slot-pick').addEventListener('click', () => pickCustomImage(kind));
@@ -187,6 +195,165 @@ slider.addEventListener('input', () => {
   setPlaying(false);
   setAngle(Number(slider.value));
 });
+// Background: drawn into the canvas so it is part of any recording, and mirrored onto
+// the page so the strip behind the dock matches what the viewport shows.
+const backgroundCanvas = document.createElement('canvas');
+const backgroundTexture = new THREE.CanvasTexture(backgroundCanvas);
+backgroundTexture.colorSpace = THREE.SRGBColorSpace;
+scene.background = backgroundTexture;
+const backgroundInput = document.querySelector('#background-upload');
+const backgroundSlot = document.querySelector('[data-background-slot]');
+const backgroundColor = document.querySelector('#background-color');
+const gradientFrom = document.querySelector('#gradient-from');
+const gradientTo = document.querySelector('#gradient-to');
+const gradientAngle = document.querySelector('#gradient-angle');
+let backgroundMode = 'color';
+let backgroundImage = null;
+let backgroundImageURL = null;
+
+function backgroundStyle() {
+  if (backgroundMode === 'gradient') return `linear-gradient(${gradientAngle.value}deg, ${gradientFrom.value}, ${gradientTo.value})`;
+  if (backgroundMode === 'image' && backgroundImageURL) return `#101418 url("${backgroundImageURL}") center / cover no-repeat`;
+  return backgroundColor.value;
+}
+function drawBackground() {
+  const rect = viewport.getBoundingClientRect();
+  if (rect.width < 1 || rect.height < 1) return;
+  const scale = Math.min(devicePixelRatio, 2, 2560 / rect.width);
+  const width = Math.round(rect.width * scale), height = Math.round(rect.height * scale);
+  if (backgroundCanvas.width !== width || backgroundCanvas.height !== height) {
+    backgroundCanvas.width = width;
+    backgroundCanvas.height = height;
+    // The texture's storage is sized on first upload, so a resized canvas needs a fresh one.
+    backgroundTexture.dispose();
+  }
+  // Draw in page coordinates: the canvas then holds exactly the part of the page
+  // background the viewport covers, leaving no seam against the CSS behind the dock.
+  const context = backgroundCanvas.getContext('2d');
+  context.setTransform(scale, 0, 0, scale, -rect.left * scale, -rect.top * scale);
+  const pageWidth = innerWidth, pageHeight = innerHeight;
+  if (backgroundMode === 'gradient') {
+    // Follow the CSS gradient line: 0deg points up and angles run clockwise.
+    const radians = Number(gradientAngle.value) * Math.PI / 180;
+    const x = Math.sin(radians), y = -Math.cos(radians);
+    const length = Math.abs(pageWidth * x) + Math.abs(pageHeight * y);
+    const gradient = context.createLinearGradient(
+      (pageWidth - x * length) / 2, (pageHeight - y * length) / 2,
+      (pageWidth + x * length) / 2, (pageHeight + y * length) / 2);
+    gradient.addColorStop(0, gradientFrom.value);
+    gradient.addColorStop(1, gradientTo.value);
+    context.fillStyle = gradient;
+  } else {
+    context.fillStyle = backgroundMode === 'image' && backgroundImage ? '#101418' : backgroundColor.value;
+  }
+  context.fillRect(0, 0, pageWidth, pageHeight);
+  if (backgroundMode === 'image' && backgroundImage) {
+    const cover = Math.max(pageWidth / backgroundImage.width, pageHeight / backgroundImage.height);
+    const width = backgroundImage.width * cover, height = backgroundImage.height * cover;
+    context.drawImage(backgroundImage, (pageWidth - width) / 2, (pageHeight - height) / 2, width, height);
+  }
+  backgroundTexture.needsUpdate = true;
+  document.body.style.background = backgroundStyle();
+}
+function setBackgroundImage(source) {
+  if (backgroundImageURL) URL.revokeObjectURL(backgroundImageURL);
+  backgroundImage = source?.image ?? null;
+  backgroundImageURL = source?.url ?? null;
+  syncSlot(backgroundSlot, backgroundImageURL);
+  drawBackground();
+}
+document.querySelectorAll('[data-background-mode]').forEach(button => button.addEventListener('click', () => {
+  backgroundMode = button.dataset.backgroundMode;
+  document.querySelectorAll('[data-background-mode]').forEach(tab =>
+    tab.setAttribute('aria-selected', String(tab.dataset.backgroundMode === backgroundMode)));
+  document.querySelectorAll('[data-background-fields]').forEach(fields =>
+    fields.hidden = fields.dataset.backgroundFields !== backgroundMode);
+  drawBackground();
+  if (backgroundMode === 'image' && !backgroundImage) backgroundInput.click();
+}));
+document.querySelectorAll('[data-background-color]').forEach(button => button.addEventListener('click', () => {
+  backgroundColor.value = button.dataset.backgroundColor;
+  syncSwatches();
+  drawBackground();
+}));
+function syncSwatches() {
+  document.querySelectorAll('[data-background-color]').forEach(button => button.setAttribute('aria-pressed',
+    String(button.dataset.backgroundColor.toLowerCase() === backgroundColor.value.toLowerCase())));
+}
+backgroundColor.addEventListener('input', () => {
+  syncSwatches();
+  drawBackground();
+});
+[gradientFrom, gradientTo].forEach(input => input.addEventListener('input', drawBackground));
+gradientAngle.addEventListener('input', () => {
+  gradientAngle.style.setProperty('--progress', `${gradientAngle.value / 3.6}%`);
+  drawBackground();
+});
+gradientAngle.style.setProperty('--progress', `${gradientAngle.value / 3.6}%`);
+backgroundSlot.querySelector('.custom-slot-pick').addEventListener('click', () => backgroundInput.click());
+backgroundSlot.querySelector('.custom-slot-clear').addEventListener('click', () => setBackgroundImage(null));
+backgroundInput.addEventListener('change', async () => {
+  const file = backgroundInput.files[0];
+  backgroundInput.value = '';
+  if (file) setBackgroundImage(await readImage(file));
+});
+syncSwatches();
+
+// Recording: capture the canvas through one full fold cycle and hand back a file.
+const FOLD_CYCLE = 8.6;
+const recordButton = document.querySelector('#record');
+// Prefer H.264 in MP4, which every player opens; the rest are fallbacks for browsers without it.
+const recordType = window.MediaRecorder && [
+  'video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1.4D401E', 'video/mp4;codecs=avc1',
+  'video/mp4;codecs=h264', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm',
+].find(type => MediaRecorder.isTypeSupported(type));
+const canRecord = Boolean(recordType && renderer.domElement.captureStream);
+let recorder = null;
+let recordElapsed = 0;
+
+function setRecording(value) {
+  recordButton.classList.toggle('recording', value);
+  document.querySelector('#record-icon').toggleAttribute('hidden', value);
+  document.querySelector('#stop-icon').toggleAttribute('hidden', !value);
+  const label = value ? 'Stop recording and download' : 'Record the fold animation';
+  recordButton.setAttribute('aria-label', label);
+  recordButton.title = label;
+  // Hold the rest of the dock still until the recording is finished.
+  document.querySelectorAll('button, input').forEach(element => {
+    if (element !== recordButton) element.disabled = value;
+  });
+}
+function startRecording() {
+  if (!canRecord) return;
+  const stream = renderer.domElement.captureStream(60);
+  const chunks = [];
+  recorder = new MediaRecorder(stream, { mimeType: recordType, videoBitsPerSecond: 16000000 });
+  recorder.addEventListener('dataavailable', event => {
+    if (event.data.size) chunks.push(event.data);
+  });
+  recorder.addEventListener('stop', () => {
+    stream.getTracks().forEach(track => track.stop());
+    recorder = null;
+    setRecording(false);
+    setPlaying(false);
+    const url = URL.createObjectURL(new Blob(chunks, { type: recordType }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `iphone-duo-fold.${recordType.startsWith('video/mp4') ? 'mp4' : 'webm'}`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  });
+  transition = null;
+  recordElapsed = 0;
+  phase = 0;
+  setAngle(180);
+  setPlaying(true);
+  setRecording(true);
+  recordButton.style.setProperty('--record-progress', '0%');
+  recorder.start();
+}
+recordButton.addEventListener('click', () => (recorder ? recorder.stop() : startRecording()));
+
 function resize() {
   const { width, height } = viewport.getBoundingClientRect();
   renderer.setSize(width, height);
@@ -194,6 +361,7 @@ function resize() {
   const pixelsPerUnit = Math.min(width / 25, height / 17, 37);
   camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(height / pixelsPerUnit / 2 / 40));
   camera.updateProjectionMatrix();
+  drawBackground();
 }
 new ResizeObserver(resize).observe(viewport);
 const dock = document.querySelector('.control-dock');
@@ -353,6 +521,10 @@ try {
   console.info('Official model ready', JSON.stringify({ ...count, sourceMeshes: phone.children.length, innerUI: true, outerUI: true, fixedHalf: 'rear camera' }));
   applyScreens();
   document.querySelectorAll('button, input').forEach(element => element.disabled = false);
+  if (!canRecord) {
+    recordButton.disabled = true;
+    recordButton.title = 'This browser cannot record video';
+  }
   ready = true;
   setAngle(180);
 } catch (error) {
@@ -377,6 +549,11 @@ renderer.setAnimationLoop(now => {
     const ease = progress * progress * (3 - 2 * progress);
     setAngle(THREE.MathUtils.lerp(transition.from, transition.to, ease));
     if (progress === 1) transition = null;
+  }
+  if (recorder) {
+    recordElapsed += delta;
+    recordButton.style.setProperty('--record-progress', `${Math.min(recordElapsed / FOLD_CYCLE, 1) * 100}%`);
+    if (recordElapsed >= FOLD_CYCLE) recorder.stop();
   }
   controls.update();
   renderer.render(scene, camera);

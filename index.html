@@ -30,9 +30,33 @@
       </div>
       <input id="ui-upload" type="file" accept="image/*" hidden disabled>
     </aside>
+    <aside class="background-panel" aria-label="Background">
+      <div class="panel-heading"><h2>Background</h2></div>
+      <div class="ui-themes" role="tablist" aria-label="Background type"><button role="tab" data-background-mode="color" aria-selected="true" disabled>Color</button><button role="tab" data-background-mode="gradient" aria-selected="false" disabled>Gradient</button><button role="tab" data-background-mode="image" aria-selected="false" disabled>Image</button></div>
+      <div class="background-body">
+        <div class="background-fields" data-background-fields="color">
+          <div class="swatches"><button class="swatch" type="button" data-background-color="#f6f6f3" style="--swatch:#f6f6f3" aria-label="Off white" disabled></button><button class="swatch" type="button" data-background-color="#e6e9e0" style="--swatch:#e6e9e0" aria-label="Pale sage" disabled></button><button class="swatch" type="button" data-background-color="#2b3128" style="--swatch:#2b3128" aria-label="Deep olive" disabled></button><button class="swatch" type="button" data-background-color="#101418" style="--swatch:#101418" aria-label="Near black" disabled></button><button class="swatch" type="button" data-background-color="#d9e2ef" style="--swatch:#d9e2ef" aria-label="Cool grey" disabled></button><button class="swatch" type="button" data-background-color="#f2ded0" style="--swatch:#f2ded0" aria-label="Warm sand" disabled></button></div>
+          <label class="field"><span>Custom</span><input id="background-color" type="color" value="#f6f6f3" disabled></label>
+        </div>
+        <div class="background-fields" data-background-fields="gradient" hidden>
+          <div class="field-row">
+            <label class="field"><span>From</span><input id="gradient-from" type="color" value="#dfe7f5" disabled></label>
+            <label class="field"><span>To</span><input id="gradient-to" type="color" value="#f7e6d8" disabled></label>
+          </div>
+          <label class="field angle"><span>Angle</span><input id="gradient-angle" type="range" min="0" max="360" step="5" value="160" disabled></label>
+        </div>
+        <div class="background-fields" data-background-fields="image" hidden>
+          <div class="custom-slot" data-background-slot>
+            <button class="custom-slot-pick" type="button" disabled><span class="custom-slot-preview"></span><span class="custom-slot-text"><span class="custom-slot-title">Background</span><span class="custom-slot-state">Add image</span></span></button>
+            <button class="custom-slot-clear" type="button" aria-label="Remove the background image" hidden disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+          </div>
+        </div>
+      </div>
+      <input id="background-upload" type="file" accept="image/*" hidden disabled>
+    </aside>
     <section class="controls" aria-label="Fold animation controls">
       <button id="play" class="play" aria-label="Play animation" disabled><svg id="pause-icon" viewBox="0 0 24 24" hidden><path d="M8 6v12M16 6v12"/></svg><svg id="play-icon" viewBox="0 0 24 24"><path d="m9 5 10 7-10 7Z"/></svg></button>
-      <input id="angle" aria-label="Fold progress" type="range" min="0" max="180" value="180" step="0.1" disabled>
+      <input id="angle" aria-label="Fold progress" type="range" min="0" max="180" value="180" step="0.1" disabled><button id="record" class="play record" aria-label="Record the fold animation" title="Record the fold animation" disabled><svg id="record-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/></svg><svg id="stop-icon" viewBox="0 0 24 24" hidden><rect x="7" y="7" width="10" height="10" rx="2"/></svg></button>
     </section>
     </div>
   </main>
