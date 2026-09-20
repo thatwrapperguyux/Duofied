@@ -13,7 +13,7 @@ A browser-based study of foldable screen transitions, built with Three.js.
 - Background colour, gradient, or image, drawn into the canvas so recordings include it.
 - Record one full fold cycle and download it as an MP4.
 - Drag to orbit, scroll to zoom, or use the play button and slider to fold the device.
-- Responsive controls for desktop and mobile. Uploaded images stay in the current browser tab.
+- Controls live in a left sidebar beside a full-bleed preview; on narrow screens the sidebar becomes a sheet below it. Uploaded images stay in the current browser tab.
 
 ## Run locally
 
@@ -36,6 +36,17 @@ On Windows, activate the environment with `.venv\Scripts\activate`.
 Open [http://127.0.0.1:8766/](http://127.0.0.1:8766/). Serve the directory over HTTP; opening `index.html` as a local file cannot load the model.
 
 The preparation script downloads the original Star White USDZ and UI images from Apple, selects the model's Landscape pose, flattens its references, and rewrites texture paths for the browser. The resulting files stay in the ignored `assets/` directory. Asset URLs were verified on September 10, 2026.
+
+## Interface
+
+The window is split between a control sidebar and the preview. The sidebar groups the
+controls in the order they are usually reached — Screens, Background, Fold — with the
+recording action pinned to the bottom. Below 900px wide the sidebar moves under the
+preview as a scrollable sheet, and the fold controls rise to the top of it.
+
+Type is [Inter](https://fonts.google.com/specimen/Inter), loaded from Google Fonts, over a
+system sans fallback. The page is the only thing that reaches the network at runtime; drop
+the stylesheet link in `index.html` if the deployment must stay self-contained.
 
 ## Screen controls
 
@@ -77,7 +88,7 @@ The file is H.264 in an MP4 container wherever the browser can encode it, which 
 | `index.html` | Screen-mode tabs, background controls, and fold controls |
 | `main.js` | Three.js scene, fold deformation, projected UI, blur, darkening, background, and recording |
 | `ui.js` | Default screen layouts |
-| `style.css` | Desktop and mobile layout |
+| `style.css` | Design tokens, sidebar, controls, and responsive layout |
 | `scripts/prepare-assets.py` | Download and prepare the reference assets |
 | `vercel.json` | Install and prepare assets during Vercel builds |
 | `vendor/three/` | Three.js runtime and required add-ons |

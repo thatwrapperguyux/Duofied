@@ -85,7 +85,7 @@ for (const kind of ['inner', 'outer']) {
 const uiInput = document.querySelector('#ui-upload');
 const customPanel = document.querySelector('#custom-screens');
 const customSlots = Object.fromEntries(['inner', 'outer'].map(kind =>
-  [kind, document.querySelector(`.custom-slot[data-custom-screen="${kind}"]`)]));
+  [kind, document.querySelector(`.slot[data-custom-screen="${kind}"]`)]));
 let uploadTarget = 'outer';
 
 function drawContainedImage(canvas, image) {
@@ -98,9 +98,9 @@ function drawContainedImage(canvas, image) {
 }
 function syncSlot(slot, url) {
   slot.classList.toggle('filled', Boolean(url));
-  slot.querySelector('.custom-slot-preview').style.backgroundImage = url ? `url("${url}")` : '';
-  slot.querySelector('.custom-slot-state').textContent = url ? 'Replace image' : 'Add image';
-  slot.querySelector('.custom-slot-clear').hidden = !url;
+  slot.querySelector('.slot-preview').style.backgroundImage = url ? `url("${url}")` : '';
+  slot.querySelector('.slot-state').textContent = url ? 'Replace image' : 'Add image';
+  slot.querySelector('.slot-clear').hidden = !url;
 }
 function setCustomSource(kind, url) {
   const previous = customSources[kind];
@@ -158,8 +158,8 @@ uiInput.addEventListener('change', async () => {
   transition = { from: angle, to: kind === 'inner' ? 180 : 0, elapsed: 0 };
 });
 for (const [kind, slot] of Object.entries(customSlots)) {
-  slot.querySelector('.custom-slot-pick').addEventListener('click', () => pickCustomImage(kind));
-  slot.querySelector('.custom-slot-clear').addEventListener('click', () => {
+  slot.querySelector('.slot-pick').addEventListener('click', () => pickCustomImage(kind));
+  slot.querySelector('.slot-clear').addEventListener('click', () => {
     setCustomSource(kind, null);
     applyScreens();
   });
@@ -178,10 +178,12 @@ function setPlaying(value) {
   document.querySelector('#play-icon').toggleAttribute('hidden', value);
   play.setAttribute('aria-label', value ? 'Pause animation' : 'Play animation');
 }
+const angleReadout = document.querySelector('#angle-readout');
 function setAngle(value) {
   angle = value;
   slider.value = value;
   slider.style.setProperty('--progress', `${value / 1.8}%`);
+  angleReadout.textContent = `${Math.round(value)}°`;
   bend.value = (180 - value) / 180 * Math.PI;
   screens.outer.material.color.setScalar(value >= 180 ? 0 : 1);
 }
@@ -195,8 +197,12 @@ slider.addEventListener('input', () => {
   setPlaying(false);
   setAngle(Number(slider.value));
 });
+document.querySelectorAll('[data-fold]').forEach(button => button.addEventListener('click', () => {
+  setPlaying(false);
+  transition = { from: angle, to: Number(button.dataset.fold), elapsed: 0 };
+}));
 // Background: drawn into the canvas so it is part of any recording, and mirrored onto
-// the page so the strip behind the dock matches what the viewport shows.
+// the page so the backdrop is already in place before the first frame renders.
 const backgroundCanvas = document.createElement('canvas');
 const backgroundTexture = new THREE.CanvasTexture(backgroundCanvas);
 backgroundTexture.colorSpace = THREE.SRGBColorSpace;
@@ -227,11 +233,10 @@ function drawBackground() {
     // The texture's storage is sized on first upload, so a resized canvas needs a fresh one.
     backgroundTexture.dispose();
   }
-  // Draw in page coordinates: the canvas then holds exactly the part of the page
-  // background the viewport covers, leaving no seam against the CSS behind the dock.
+  // Draw in viewport coordinates so a gradient or image is framed by the preview area.
   const context = backgroundCanvas.getContext('2d');
-  context.setTransform(scale, 0, 0, scale, -rect.left * scale, -rect.top * scale);
-  const pageWidth = innerWidth, pageHeight = innerHeight;
+  context.setTransform(scale, 0, 0, scale, 0, 0);
+  const pageWidth = rect.width, pageHeight = rect.height;
   if (backgroundMode === 'gradient') {
     // Follow the CSS gradient line: 0deg points up and angles run clockwise.
     const radians = Number(gradientAngle.value) * Math.PI / 180;
@@ -290,8 +295,8 @@ gradientAngle.addEventListener('input', () => {
   drawBackground();
 });
 gradientAngle.style.setProperty('--progress', `${gradientAngle.value / 3.6}%`);
-backgroundSlot.querySelector('.custom-slot-pick').addEventListener('click', () => backgroundInput.click());
-backgroundSlot.querySelector('.custom-slot-clear').addEventListener('click', () => setBackgroundImage(null));
+backgroundSlot.querySelector('.slot-pick').addEventListener('click', () => backgroundInput.click());
+backgroundSlot.querySelector('.slot-clear').addEventListener('click', () => setBackgroundImage(null));
 backgroundInput.addEventListener('change', async () => {
   const file = backgroundInput.files[0];
   backgroundInput.value = '';
@@ -313,12 +318,11 @@ let recordElapsed = 0;
 
 function setRecording(value) {
   recordButton.classList.toggle('recording', value);
-  document.querySelector('#record-icon').toggleAttribute('hidden', value);
-  document.querySelector('#stop-icon').toggleAttribute('hidden', !value);
+  document.querySelector('#record-label').textContent = value ? 'Stop and save' : 'Record MP4';
   const label = value ? 'Stop recording and download' : 'Record the fold animation';
   recordButton.setAttribute('aria-label', label);
   recordButton.title = label;
-  // Hold the rest of the dock still until the recording is finished.
+  // Hold the rest of the controls still until the recording is finished.
   document.querySelectorAll('button, input').forEach(element => {
     if (element !== recordButton) element.disabled = value;
   });
@@ -364,8 +368,6 @@ function resize() {
   drawBackground();
 }
 new ResizeObserver(resize).observe(viewport);
-const dock = document.querySelector('.control-dock');
-new ResizeObserver(() => document.documentElement.style.setProperty('--dock-height', `${dock.offsetHeight}px`)).observe(dock);
 
 const screenShader = `
 uniform float foldAngle;
