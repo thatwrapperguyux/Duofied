@@ -262,6 +262,8 @@ function show(name, anchor, animate) {
     });
   };
   if (animate && !RM) {
+    const scene = { home: '01 — home', films: '02 — films', socials: '03 — socials' }[name] || name;
+    $('#wipeTo').textContent = 'scene ' + scene;
     wipe.classList.remove('out'); wipe.classList.add('in');
     setTimeout(() => {
       go(); wipe.classList.remove('in'); wipe.classList.add('out');

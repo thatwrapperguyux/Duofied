@@ -41,6 +41,8 @@ You are building a 3-page Framer website for **zorshor**, a film and content stu
 | Lead | Inter Tight 400, Muted | 20 / 17 | 1.55 |
 | Label | Inter Tight 500 UPPERCASE, +16 % | 11–12 | 1 |
 
+**Controls:** buttons 48 px tall (nav 44 px), chips and social pills 40 px, round arrow buttons 52 px; 8–12 px gaps between grouped controls; icons 16 px.
+
 **Recurring components**
 - **Label pill:** transparent, 1 px Line border, radius 999, Label text in Ink with a 6 px green dot before it.
 - **Button:** Ink fill, white Inter Tight 500 15 px, radius 999, padding 16 × 24. Hover: fill turns Green, lifts 1 px. Ghost: 1 px Ink outline.
@@ -67,8 +69,8 @@ Add each one under Assets → Code → New file, pasting the file contents. The 
 
 ## 3. Global
 - **Nav** (fixed, 78 px): transparent at the top, white 88 % + blur + 1 px bottom hairline once scrolled. Left: logo. Centre: Socials / Films / Plans in a hairline pill group (active/hover = Ink fill, white text). Right: Ink button **Schedule a call** with a camera icon. Hides on scroll down, shows on scroll up. Phone: Menu button → white dropdown card.
-- **Page transition:** an Ink panel slides across with the white logo in the centre.
-- **Footer** (all pages): centred Green pill CTA "Got an idea? LET'S MAKE IT" (hover → Ink); hairline; the full-width Green logo; a Pages column (Home, Films, Socials, Plans, FAQ) and social pills (Instagram, YouTube, LinkedIn, Behance). **No copyright / contact line** — client to supply.
+- **Page transition:** a Green panel slides across. Centred: a small outlined label "SCENE 02 — FILMS" (scene number + target page), the word **action!** in League Spartan 800 white (~200 px, rotated −3°, pops in), and a small white logo under it.
+- **Footer** (all pages): centred Green pill CTA "Got an idea? LET'S MAKE IT" (hover → Ink); hairline; the full-width crisp SVG logo in Green Logo; then one bottom bar above a hairline: inline page links on the left (Home, Films, Socials, Plans, FAQ, 28 px apart, underline on hover) and 40 px social pills on the right (Instagram, YouTube, LinkedIn, Behance), vertically centred on one line. **No copyright / contact line** — client to supply.
 
 ## 4. Home `/`
 1. **Loader:** `PolaroidLoader` on white. A white polaroid drops in slightly tilted; inside, on Cream Yellow, the green Hathi juggles his yellow ball. Caption (Label style) runs "rolling camera… / finding the light… / one more take…" with a 000–100 counter and a thin green progress line. Then "action!", the frame straightens and the photo window zooms open into the page.
@@ -132,8 +134,8 @@ Add each one under Assets → Code → New file, pasting the file contents. The 
 
 ## 6. Socials `/socials`
 1. **Shoot / Edit / Deliver / Repeat:** pill "Socials", then `WordStack`, pinned while scrolling.
-   - Words are hairline pills in light grey text; the active word becomes an Ink pill with white text (scale 1.1).
-   - Beside it: "KEEP SCROLLING ↓" label and thin green progress bars.
+   - Sticker style: each word in League Spartan 800 inside a 3 px Ink border with a hand-drawn (uneven) radius, alternately nudged left/right. Upcoming words are light grey, finished words Ink. The active word becomes a **Green sticker with white text, scaled 1.12, rotated −2.5°, with a hard `6px 6px 0 Ink` shadow**.
+   - Around it: a green megaphone doodle top-right, "KEEP SCROLLING ↓" label, and 4 small Ink progress bars.
 2. A large image with "Content that keeps up with the feed." overlaid, and the side text "We run always-on social for brands that post every day…"
    - Plus a **Book your meeting** card: Ink background, green calendar icon, "15 MIN · VIDEO CALL"; hover turns Green.
 3. **What we offer!** (H2 centred): a 2 px green vertical line draws on scroll, and thin branches with arrows grow to three hairline cards:
