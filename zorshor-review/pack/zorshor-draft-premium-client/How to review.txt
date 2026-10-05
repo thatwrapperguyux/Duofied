@@ -1,0 +1,25 @@
+zorshor website — review files
+
+There are two design directions to compare:
+  • zorshor - Premium.html
+  • zorshor - Draft 1.html
+
+1. Double-click a file to open it in your browser (Chrome, Safari or Edge).
+2. Browse it like a normal website: Home, Socials, Films and Plans are in the top menu.
+
+Leaving comments
+  1. Click "Comment" in the black bar at the bottom-right.
+  2. Click any part of the page — a heading, an image, a button.
+  3. Type what you'd like changed, add your name, then press "Post comment".
+     A numbered pin marks the spot. Press Esc to stop commenting.
+  4. Click the list icon to see all your comments. You can resolve or delete them there.
+
+Sending your comments back
+  • "Copy share link" copies a link that contains all your comments — paste it into
+    WhatsApp or email. (It opens with your pins in place once the file is hosted online.)
+  • "Copy as text" copies a numbered list you can paste anywhere.
+  • "Export file" saves a small .json file — attach it to an email.
+Any one of these is enough.
+
+Your comments are saved in this browser, so you can close the file and come back later.
+Comments in Premium and Draft 1 are kept separately.
