@@ -61,7 +61,9 @@ Both themes share one page structure; only the styling tokens differ (section 2)
 - **Page change ("action!"):**
   - Three ragged paper cut-outs slide across in layers, 60 ms apart and slightly rotated, each with a soft shadow. Premium uses ink, cream then green; Draft 1 uses black, white then green.
   - Centred on top: a small outlined pill "SCENE 02 — FILMS" (scene number and page name) and the word **action** in Chicken Dinner (~200 px), followed by a hand-drawn "!".
-  - The layers then slide out to the left while the new page appears underneath.
+  - It plays as **one continuous pass, with no pause**: each layer slides in and out in a single 1.15 s motion (`cubic-bezier(.65,0,.35,1)`), the new page swaps in at the midpoint while the screen is covered, and the text fades in and out across 40–60 % of the pass.
+  - Three variants rotate on each page change: sweep right-to-left, rise bottom-to-top (ragged top and bottom edges), and sweep left-to-right.
+  - Pause any video or canvas animation while it plays, and don't use filters or shadows on the moving layers; both cause stutter.
 - **Footer** (compact):
   1. CTA row: "Got an idea? *Let's make it.*" (42 px) with the subline "Tell us what you're making — a producer replies within a day." On the right, small buttons: **Start a project →** and **Book a call** (ghost).
   2. A 4-column grid:
