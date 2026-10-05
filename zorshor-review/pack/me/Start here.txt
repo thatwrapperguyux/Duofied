@@ -1,0 +1,27 @@
+zorshor — your files (internal)
+
+What's in here
+  site/zorshor-premium.html     Premium theme, no comment tools (for you / presenting)
+  site/zorshor-draft-1.html     Draft 1 theme, no comment tools
+  framer-handoff/              Give this folder to the Framer agent:
+                                 FRAMER_AGENT_BRIEF.md  — read first
+                                 reference/             — the two finished builds to match
+                                 assets/                — logo, Hathi (loader only), Chicken Dinner subset
+                                 code-components/       — loader, process line, box, board, word stack, video, bands
+
+The client gets the other zip (zorshor-for-client.zip) — same site, plus comment tools.
+
+Reading the client's comments
+  A) Live links (recommended): share the Premium / Draft 1 links with the client from the page's
+     Share menu (give them comment access). Their comments appear in the comments panel on the same
+     link, for you and the client.
+  B) Offline files: the client sends you a share link, copied text, or a .json file.
+     • Text: just read it — each comment is numbered with the page and section.
+     • Link or .json: open the client file (zorshor - Premium.html or Draft 1) in your browser,
+       click the list icon at the bottom-right → "Import comments", paste the link or choose
+       the file. Pins appear on the page exactly where the client left them.
+
+Notes
+  • Chicken Dinner (the brand's secondary font) is used only for the "action" page-change word. The
+    included file is a subset taken from the brand kit — install the licensed font in Framer.
+  • Placeholders are intentionally empty. There's no copyright line — add the client's when ready.
