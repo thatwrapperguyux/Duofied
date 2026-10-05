@@ -59,11 +59,10 @@ Both themes share one page structure; only the styling tokens differ (section 2)
 ## 3. Global elements
 - **Loader:** a white polaroid drops in, tilted −5°. Inside, on cream `#FFFDC7`, Hathi (`assets/hathi.svg`, or the Lottie later) juggles his yellow ball while a 000–100 counter and a thin green bar run. The frame then straightens and its photo window zooms open into the page.
 - **Page change ("action!"):**
-  - Three ragged paper cut-outs slide across in layers, 60 ms apart and slightly rotated, each with a soft shadow. Premium uses ink, cream then green; Draft 1 uses black, white then green.
-  - Centred on top: a small outlined pill "SCENE 02 — FILMS" (scene number and page name) and the word **action** in Chicken Dinner (~200 px), followed by a hand-drawn "!".
-  - It plays as **one continuous pass, with no pause**: each layer slides in and out in a single 1.15 s motion (`cubic-bezier(.65,0,.35,1)`), the new page swaps in at the midpoint while the screen is covered, and the text fades in and out across 40–60 % of the pass.
-  - Three variants rotate on each page change: sweep right-to-left, rise bottom-to-top (ragged top and bottom edges), and sweep left-to-right.
-  - Pause any video or canvas animation while it plays, and don't use filters or shadows on the moving layers; both cause stutter.
+  - The original first-draft brush wipe: **one** ragged green panel (Premium `#379F62`, Draft 1 `#54D668`), oversized so its rough edges stay off-screen, slides in from the right over 0.5 s (`cubic-bezier(.65,0,.35,1)`).
+  - The word **action!** in Caveat Brush (48–120 px, rotated −5°, ink colour) rides in the middle of the panel; it moves with the panel and never runs ahead of it.
+  - At 520 ms, while the screen is covered, the new page swaps in; the panel then carries on out to the left over 0.55 s. Total ≈ 1.1 s.
+  - The same wipe runs on every page change in both themes. Pause video/canvas animations while it plays and keep filters and shadows off the panel.
 - **Footer** (compact):
   1. CTA row: "Got an idea? *Let's make it.*" (42 px) with the subline "Tell us what you're making — a producer replies within a day." On the right, small buttons: **Start a project →** and **Book a call** (ghost).
   2. A 4-column grid:

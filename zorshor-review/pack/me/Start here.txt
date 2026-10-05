@@ -22,7 +22,7 @@ Reading the client's comments
        the file. Pins appear on the page exactly where the client left them.
 
 Notes
-  • Page changes play one of three paper-cut "action" transitions in turn (sweep left, rise, sweep right).
+  • Page changes play the original first-draft "action!" brush wipe (one green panel sweeping right to left).
   • Chicken Dinner (the brand's secondary font) is used only for the "action" page-change word. The
     included file is a subset taken from the brand kit — install the licensed font in Framer.
   • Placeholders are intentionally empty. There's no copyright line — add the client's when ready.

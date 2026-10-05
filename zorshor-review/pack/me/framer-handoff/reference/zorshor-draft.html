@@ -102,17 +102,13 @@ html.js .rv:not(.in){transform:translateY(24px)}
 @keyframes hHead{to{transform:rotate(-4deg)}}
 @keyframes hEar{to{transform:scaleX(.92) rotate(3deg)}}
 
-/* ---------- page change: layered paper cut-outs ---------- */
-#wipe{position:fixed;inset:0;z-index:90;pointer-events:none;display:grid;place-items:center;visibility:hidden}
-#wipe.go{visibility:visible}
-#wipe .wl{position:absolute;top:-8vh;bottom:-8vh;left:-30vw;width:160vw;max-width:none;height:116vh;transform:translateX(110%);will-change:transform;backface-visibility:hidden}
-#wipe .wl1 path{fill:var(--wipe-1)}
-#wipe .wl2 path{fill:var(--wipe-2)}
-#wipe .wl3 path{fill:var(--wipe-3)}
-#wipe .wipe-in{position:relative;display:grid;justify-items:center;gap:14px;text-align:center;opacity:0;will-change:transform,opacity}
-.wipe-scene{font:400 clamp(15px,1.4vw,19px)/1 var(--f-secondary);letter-spacing:.06em;color:var(--wipe-ink);padding:9px 16px 8px;border:1.5px solid currentColor;border-radius:999px;opacity:.85}
-.wipe-word{display:inline-flex;align-items:flex-start;gap:.04em;font:400 clamp(80px,14vw,210px)/.9 var(--f-secondary);letter-spacing:.01em;color:var(--wipe-ink)}
-.wipe-bang{width:.22em;height:.6em;color:var(--wipe-bang);margin-top:.08em}
+/* ---------- page change: the Draft 1 brush wipe ---------- */
+#wipe{position:fixed;inset:-10vh -20vw;z-index:90;pointer-events:none;transform:translateX(115%);display:grid;place-items:center;will-change:transform}
+#wipe svg{position:absolute;inset:0;width:100%;height:100%;max-width:none}
+#wipe path{fill:var(--wipe-bg)}
+#wipe .wipe-word{position:relative;font:400 clamp(48px,9vw,120px)/1 var(--f-wipe);color:var(--wipe-ink);transform:rotate(-5deg)}
+#wipe.in{transform:translateX(0);transition:transform .5s var(--ease)}
+#wipe.out{transform:translateX(-115%);transition:transform .55s var(--ease)}
 
 /* ---------- nav ---------- */
 .nav{position:fixed;top:0;left:0;right:0;z-index:50;transition:background-color .35s,box-shadow .35s,transform .45s var(--out),color .35s}
@@ -526,7 +522,7 @@ canvas.reel{width:100%;height:100%}
   --sw-idle:#C9CEC5; --sw-bg:#fff; --sw-ring:inset 0 0 0 3px var(--ink); --sw-on-bg:var(--accent); --sw-on-fg:var(--ink); --sw-on-shadow:inset 0 0 0 3px var(--ink),6px 6px 0 var(--ink);
   --loader-bg:#fff; --ld-photo:var(--accent);
   --hathi:#1D7A33; --hathi-ear:#0D0F0C; --hathi-ball:#fff;
-  --wipe-1:#0D0F0C; --wipe-2:#FFFFFF; --wipe-3:#54D668; --wipe-ink:#0D0F0C; --wipe-bang:#0D0F0C;
+  --wipe-bg:#54D668; --wipe-ink:#0D0F0C; --f-wipe:"Caveat Brush","Segoe Print",cursive;
   color-scheme:light;
 }
 /* hand-drawn signature */
@@ -632,15 +628,7 @@ canvas.reel{width:100%;height:100%}
 </div>
 
 <!-- PAGE CHANGE — layered paper cut-outs with "action!" -->
-<div id="wipe" aria-hidden="true">
-  <svg class="wl wl1" viewBox="0 0 1000 1000" preserveAspectRatio="none"><path/></svg>
-  <svg class="wl wl2" viewBox="0 0 1000 1000" preserveAspectRatio="none"><path/></svg>
-  <svg class="wl wl3" viewBox="0 0 1000 1000" preserveAspectRatio="none"><path/></svg>
-  <div class="wipe-in">
-    <span class="wipe-scene" id="wipeTo">scene 02 — films</span>
-    <span class="wipe-word">action<svg class="wipe-bang"><use href="#i-bang"/></svg></span>
-  </div>
-</div>
+<div id="wipe" aria-hidden="true"><svg viewBox="0 0 1000 1000" preserveAspectRatio="none"><path id="wipePath"/></svg><span class="wipe-word">action!</span></div>
 
 <header class="nav" id="nav">
   <div class="wrap nav-in">
@@ -1121,17 +1109,11 @@ $$('svg.brush').forEach(svg => {
   svg.innerHTML = `<path d="${d}" fill="#379F62"/><path d="${s}" fill="none" stroke="#fff" stroke-opacity=".32" stroke-width="1.6" stroke-linecap="round" vector-effect="non-scaling-stroke"/><path d="${s}" transform="translate(46 7)" fill="none" stroke="#2FA548" stroke-opacity=".45" stroke-width="2.6" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
 });
 (() => {
-  $$('#wipe .wl path').forEach((p, k) => {
-    const r = rng(5 + k * 11); let h = `M${(60 + r() * 50).toFixed(0)} -20`;
-    for (let y = 0; y <= 1000; y += 34) h += `L${(30 + r() * 80).toFixed(0)} ${y}`;
-    h += 'L60 1020L940 1020';
-    for (let y = 1000; y >= 0; y -= 34) h += `L${(880 + r() * 80).toFixed(0)} ${y}`;
-    let v = `M-20 ${(60 + r() * 50).toFixed(0)}`;
-    for (let x = 0; x <= 1000; x += 34) v += `L${x} ${(30 + r() * 80).toFixed(0)}`;
-    v += 'L1020 60L1020 940';
-    for (let x = 1000; x >= 0; x -= 34) v += `L${x} ${(880 + r() * 80).toFixed(0)}`;
-    p.dataset.h = h + 'Z'; p.dataset.v = v + 'Z'; p.setAttribute('d', p.dataset.h);
-  });
+  const r = rng(5); let d = 'M70 -20';
+  for (let y = 0; y <= 1000; y += 40) d += `L${(40 + r() * 70).toFixed(0)} ${y}`;
+  d += 'L60 1020L940 1020';
+  for (let y = 1000; y >= 0; y -= 40) d += `L${(890 + r() * 70).toFixed(0)} ${y}`;
+  $('#wipePath').setAttribute('d', d + 'Z');
 })();
 
 /* ---------- buttons: text roll ---------- */
@@ -1355,33 +1337,19 @@ function show(name, anchor, animate) {
     });
   };
   if (animate && !RM) {
-    const scene = { home: '01 — home', films: '02 — films', socials: '03 — socials' }[name] || name;
-    $('#wipeTo').textContent = 'scene ' + scene;
     playWipe(go);
   } else go();
 }
-/* page change: one continuous pass — in, swap while covered, out — no hold */
-const WIPES = [
-  { shape: 'h', from: 'translate3d(110%,0,0) rotate(-2deg)', to: 'translate3d(-125%,0,0) rotate(2deg)' },
-  { shape: 'v', from: 'translate3d(0,110%,0) rotate(1.5deg)', to: 'translate3d(0,-125%,0) rotate(-1.5deg)' },
-  { shape: 'h', from: 'translate3d(-110%,0,0) rotate(2deg)', to: 'translate3d(125%,0,0) rotate(-2deg)' }
-];
-let wipeN = 0, wiping = false;
+/* page change: the Draft 1 brush wipe — panel in (.5s), swap, panel out (.55s) */
+let wiping = false;
 function playWipe(swap) {
   if (wiping) { swap(); return; }
   wiping = true;
-  const v = WIPES[wipeN++ % WIPES.length], D = 1150, ease = 'cubic-bezier(.65,0,.35,1)';
-  wipe.classList.add('go');
-  const layers = $$('#wipe .wl');
-  layers.forEach(l => { const p = $('path', l); p.setAttribute('d', p.dataset[v.shape]); });
-  const anims = layers.map((l, k) => l.animate(
-    [{ transform: v.from }, { transform: 'translate3d(0,0,0) rotate(0deg)', offset: .5 }, { transform: v.to }],
-    { duration: D, delay: k * 55, easing: ease, fill: 'both' }));
-  $('#wipe .wipe-in').animate(
-    [{ opacity: 0, transform: 'scale(.9) rotate(-3deg)' }, { opacity: 1, transform: 'scale(1) rotate(-3deg)', offset: .42 }, { opacity: 1, transform: 'scale(1) rotate(-3deg)', offset: .58 }, { opacity: 0, transform: 'scale(1.06) rotate(-3deg)' }],
-    { duration: D, delay: 55, easing: 'ease-in-out', fill: 'both' });
-  setTimeout(swap, D * .5 + 70);
-  Promise.all(anims.map(a => a.finished)).then(() => { wipe.classList.remove('go'); anims.forEach(a => a.cancel()); wiping = false; });
+  wipe.classList.remove('out'); wipe.classList.add('in');
+  setTimeout(() => {
+    swap(); wipe.classList.remove('in'); wipe.classList.add('out');
+    setTimeout(() => { wipe.classList.remove('out'); wiping = false; }, 600);
+  }, 520);
 }
 function navigate() {
   const { page, anchor } = parseHash();

@@ -10,7 +10,7 @@ SRC = ROOT / 'src'
 DIST = ROOT / 'dist'
 
 FONTS = {
-    'premium': 'https://fonts.googleapis.com/css2?family=League+Spartan:wght@400..700&family=Inter+Tight:wght@300..600&display=swap',
+    'premium': 'https://fonts.googleapis.com/css2?family=League+Spartan:wght@400..700&family=Inter+Tight:wght@300..600&family=Caveat+Brush&display=swap',
     'draft': 'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..700&family=Caveat+Brush&family=Instrument+Sans:wght@400..600&display=swap',
 }
 

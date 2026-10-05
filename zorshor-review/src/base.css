@@ -89,17 +89,13 @@ html.js .rv:not(.in){transform:translateY(24px)}
 @keyframes hHead{to{transform:rotate(-4deg)}}
 @keyframes hEar{to{transform:scaleX(.92) rotate(3deg)}}
 
-/* ---------- page change: layered paper cut-outs ---------- */
-#wipe{position:fixed;inset:0;z-index:90;pointer-events:none;display:grid;place-items:center;visibility:hidden}
-#wipe.go{visibility:visible}
-#wipe .wl{position:absolute;top:-8vh;bottom:-8vh;left:-30vw;width:160vw;max-width:none;height:116vh;transform:translateX(110%);will-change:transform;backface-visibility:hidden}
-#wipe .wl1 path{fill:var(--wipe-1)}
-#wipe .wl2 path{fill:var(--wipe-2)}
-#wipe .wl3 path{fill:var(--wipe-3)}
-#wipe .wipe-in{position:relative;display:grid;justify-items:center;gap:14px;text-align:center;opacity:0;will-change:transform,opacity}
-.wipe-scene{font:400 clamp(15px,1.4vw,19px)/1 var(--f-secondary);letter-spacing:.06em;color:var(--wipe-ink);padding:9px 16px 8px;border:1.5px solid currentColor;border-radius:999px;opacity:.85}
-.wipe-word{display:inline-flex;align-items:flex-start;gap:.04em;font:400 clamp(80px,14vw,210px)/.9 var(--f-secondary);letter-spacing:.01em;color:var(--wipe-ink)}
-.wipe-bang{width:.22em;height:.6em;color:var(--wipe-bang);margin-top:.08em}
+/* ---------- page change: the Draft 1 brush wipe ---------- */
+#wipe{position:fixed;inset:-10vh -20vw;z-index:90;pointer-events:none;transform:translateX(115%);display:grid;place-items:center;will-change:transform}
+#wipe svg{position:absolute;inset:0;width:100%;height:100%;max-width:none}
+#wipe path{fill:var(--wipe-bg)}
+#wipe .wipe-word{position:relative;font:400 clamp(48px,9vw,120px)/1 var(--f-wipe);color:var(--wipe-ink);transform:rotate(-5deg)}
+#wipe.in{transform:translateX(0);transition:transform .5s var(--ease)}
+#wipe.out{transform:translateX(-115%);transition:transform .55s var(--ease)}
 
 /* ---------- nav ---------- */
 .nav{position:fixed;top:0;left:0;right:0;z-index:50;transition:background-color .35s,box-shadow .35s,transform .45s var(--out),color .35s}

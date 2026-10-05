@@ -46,17 +46,11 @@ $$('svg.brush').forEach(svg => {
   svg.innerHTML = `<path d="${d}" fill="#379F62"/><path d="${s}" fill="none" stroke="#fff" stroke-opacity=".32" stroke-width="1.6" stroke-linecap="round" vector-effect="non-scaling-stroke"/><path d="${s}" transform="translate(46 7)" fill="none" stroke="#2FA548" stroke-opacity=".45" stroke-width="2.6" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
 });
 (() => {
-  $$('#wipe .wl path').forEach((p, k) => {
-    const r = rng(5 + k * 11); let h = `M${(60 + r() * 50).toFixed(0)} -20`;
-    for (let y = 0; y <= 1000; y += 34) h += `L${(30 + r() * 80).toFixed(0)} ${y}`;
-    h += 'L60 1020L940 1020';
-    for (let y = 1000; y >= 0; y -= 34) h += `L${(880 + r() * 80).toFixed(0)} ${y}`;
-    let v = `M-20 ${(60 + r() * 50).toFixed(0)}`;
-    for (let x = 0; x <= 1000; x += 34) v += `L${x} ${(30 + r() * 80).toFixed(0)}`;
-    v += 'L1020 60L1020 940';
-    for (let x = 1000; x >= 0; x -= 34) v += `L${x} ${(880 + r() * 80).toFixed(0)}`;
-    p.dataset.h = h + 'Z'; p.dataset.v = v + 'Z'; p.setAttribute('d', p.dataset.h);
-  });
+  const r = rng(5); let d = 'M70 -20';
+  for (let y = 0; y <= 1000; y += 40) d += `L${(40 + r() * 70).toFixed(0)} ${y}`;
+  d += 'L60 1020L940 1020';
+  for (let y = 1000; y >= 0; y -= 40) d += `L${(890 + r() * 70).toFixed(0)} ${y}`;
+  $('#wipePath').setAttribute('d', d + 'Z');
 })();
 
 /* ---------- buttons: text roll ---------- */
@@ -280,33 +274,19 @@ function show(name, anchor, animate) {
     });
   };
   if (animate && !RM) {
-    const scene = { home: '01 — home', films: '02 — films', socials: '03 — socials' }[name] || name;
-    $('#wipeTo').textContent = 'scene ' + scene;
     playWipe(go);
   } else go();
 }
-/* page change: one continuous pass — in, swap while covered, out — no hold */
-const WIPES = [
-  { shape: 'h', from: 'translate3d(110%,0,0) rotate(-2deg)', to: 'translate3d(-125%,0,0) rotate(2deg)' },
-  { shape: 'v', from: 'translate3d(0,110%,0) rotate(1.5deg)', to: 'translate3d(0,-125%,0) rotate(-1.5deg)' },
-  { shape: 'h', from: 'translate3d(-110%,0,0) rotate(2deg)', to: 'translate3d(125%,0,0) rotate(-2deg)' }
-];
-let wipeN = 0, wiping = false;
+/* page change: the Draft 1 brush wipe — panel in (.5s), swap, panel out (.55s) */
+let wiping = false;
 function playWipe(swap) {
   if (wiping) { swap(); return; }
   wiping = true;
-  const v = WIPES[wipeN++ % WIPES.length], D = 1150, ease = 'cubic-bezier(.65,0,.35,1)';
-  wipe.classList.add('go');
-  const layers = $$('#wipe .wl');
-  layers.forEach(l => { const p = $('path', l); p.setAttribute('d', p.dataset[v.shape]); });
-  const anims = layers.map((l, k) => l.animate(
-    [{ transform: v.from }, { transform: 'translate3d(0,0,0) rotate(0deg)', offset: .5 }, { transform: v.to }],
-    { duration: D, delay: k * 55, easing: ease, fill: 'both' }));
-  $('#wipe .wipe-in').animate(
-    [{ opacity: 0, transform: 'scale(.9) rotate(-3deg)' }, { opacity: 1, transform: 'scale(1) rotate(-3deg)', offset: .42 }, { opacity: 1, transform: 'scale(1) rotate(-3deg)', offset: .58 }, { opacity: 0, transform: 'scale(1.06) rotate(-3deg)' }],
-    { duration: D, delay: 55, easing: 'ease-in-out', fill: 'both' });
-  setTimeout(swap, D * .5 + 70);
-  Promise.all(anims.map(a => a.finished)).then(() => { wipe.classList.remove('go'); anims.forEach(a => a.cancel()); wiping = false; });
+  wipe.classList.remove('out'); wipe.classList.add('in');
+  setTimeout(() => {
+    swap(); wipe.classList.remove('in'); wipe.classList.add('out');
+    setTimeout(() => { wipe.classList.remove('out'); wiping = false; }, 600);
+  }, 520);
 }
 function navigate() {
   const { page, anchor } = parseHash();

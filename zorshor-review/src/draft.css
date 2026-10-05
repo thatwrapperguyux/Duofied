@@ -31,7 +31,7 @@
   --sw-idle:#C9CEC5; --sw-bg:#fff; --sw-ring:inset 0 0 0 3px var(--ink); --sw-on-bg:var(--accent); --sw-on-fg:var(--ink); --sw-on-shadow:inset 0 0 0 3px var(--ink),6px 6px 0 var(--ink);
   --loader-bg:#fff; --ld-photo:var(--accent);
   --hathi:#1D7A33; --hathi-ear:#0D0F0C; --hathi-ball:#fff;
-  --wipe-1:#0D0F0C; --wipe-2:#FFFFFF; --wipe-3:#54D668; --wipe-ink:#0D0F0C; --wipe-bang:#0D0F0C;
+  --wipe-bg:#54D668; --wipe-ink:#0D0F0C; --f-wipe:"Caveat Brush","Segoe Print",cursive;
   color-scheme:light;
 }
 /* hand-drawn signature */
