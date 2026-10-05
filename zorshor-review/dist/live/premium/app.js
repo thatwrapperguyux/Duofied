@@ -47,11 +47,15 @@ $$('svg.brush').forEach(svg => {
 });
 (() => {
   $$('#wipe .wl path').forEach((p, k) => {
-    const r = rng(5 + k * 11); let d = `M${(60 + r() * 50).toFixed(0)} -20`;
-    for (let y = 0; y <= 1000; y += 34) d += `L${(30 + r() * 80).toFixed(0)} ${y}`;
-    d += 'L60 1020L940 1020';
-    for (let y = 1000; y >= 0; y -= 34) d += `L${(880 + r() * 80).toFixed(0)} ${y}`;
-    p.setAttribute('d', d + 'Z');
+    const r = rng(5 + k * 11); let h = `M${(60 + r() * 50).toFixed(0)} -20`;
+    for (let y = 0; y <= 1000; y += 34) h += `L${(30 + r() * 80).toFixed(0)} ${y}`;
+    h += 'L60 1020L940 1020';
+    for (let y = 1000; y >= 0; y -= 34) h += `L${(880 + r() * 80).toFixed(0)} ${y}`;
+    let v = `M-20 ${(60 + r() * 50).toFixed(0)}`;
+    for (let x = 0; x <= 1000; x += 34) v += `L${x} ${(30 + r() * 80).toFixed(0)}`;
+    v += 'L1020 60L1020 940';
+    for (let x = 1000; x >= 0; x -= 34) v += `L${x} ${(880 + r() * 80).toFixed(0)}`;
+    p.dataset.h = h + 'Z'; p.dataset.v = v + 'Z'; p.setAttribute('d', p.dataset.h);
   });
 })();
 
@@ -71,7 +75,7 @@ class Reel {
     this.cv = cv; this.ctx = cv.getContext('2d');
     this.scene = cv.dataset.scene || 'forest'; this.seed = +cv.dataset.seed || 1; this.tint = cv.dataset.tint || '';
     this.vis = false; this.w = 0; this.h = 0; this.last = 0; this.t = 0;
-    new ResizeObserver(() => this.resize()).observe(cv);
+    new ResizeObserver(() => { clearTimeout(this.rt); this.rt = setTimeout(() => this.resize(), wiping ? 700 : 30); }).observe(cv);
   }
   setSeed(s) { this.seed = s; this.build(); this.draw(this.t); }
   resize() {
@@ -270,7 +274,7 @@ function show(name, anchor, animate) {
     $$('.nav-links a').forEach(a => a.dataset.link === name ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
     closeMenu();
     requestAnimationFrame(() => {
-      layout();
+      setTimeout(() => { layout(); onScroll(); }, wiping ? 650 : 0);
       if (anchor) scrollToAnchor(anchor, false); else scrollTo(0, 0);
       onScroll();
     });
@@ -278,13 +282,31 @@ function show(name, anchor, animate) {
   if (animate && !RM) {
     const scene = { home: '01 — home', films: '02 — films', socials: '03 — socials' }[name] || name;
     $('#wipeTo').textContent = 'scene ' + scene;
-    wipe.classList.remove('out'); wipe.classList.add('go');
-    requestAnimationFrame(() => requestAnimationFrame(() => wipe.classList.add('in')));
-    setTimeout(() => {
-      go(); wipe.classList.remove('in'); wipe.classList.add('out');
-      setTimeout(() => wipe.classList.remove('out', 'go'), 900);
-    }, 1050);
+    playWipe(go);
   } else go();
+}
+/* page change: one continuous pass — in, swap while covered, out — no hold */
+const WIPES = [
+  { shape: 'h', from: 'translate3d(110%,0,0) rotate(-2deg)', to: 'translate3d(-125%,0,0) rotate(2deg)' },
+  { shape: 'v', from: 'translate3d(0,110%,0) rotate(1.5deg)', to: 'translate3d(0,-125%,0) rotate(-1.5deg)' },
+  { shape: 'h', from: 'translate3d(-110%,0,0) rotate(2deg)', to: 'translate3d(125%,0,0) rotate(-2deg)' }
+];
+let wipeN = 0, wiping = false;
+function playWipe(swap) {
+  if (wiping) { swap(); return; }
+  wiping = true;
+  const v = WIPES[wipeN++ % WIPES.length], D = 1150, ease = 'cubic-bezier(.65,0,.35,1)';
+  wipe.classList.add('go');
+  const layers = $$('#wipe .wl');
+  layers.forEach(l => { const p = $('path', l); p.setAttribute('d', p.dataset[v.shape]); });
+  const anims = layers.map((l, k) => l.animate(
+    [{ transform: v.from }, { transform: 'translate3d(0,0,0) rotate(0deg)', offset: .5 }, { transform: v.to }],
+    { duration: D, delay: k * 55, easing: ease, fill: 'both' }));
+  $('#wipe .wipe-in').animate(
+    [{ opacity: 0, transform: 'scale(.9) rotate(-3deg)' }, { opacity: 1, transform: 'scale(1) rotate(-3deg)', offset: .42 }, { opacity: 1, transform: 'scale(1) rotate(-3deg)', offset: .58 }, { opacity: 0, transform: 'scale(1.06) rotate(-3deg)' }],
+    { duration: D, delay: 55, easing: 'ease-in-out', fill: 'both' });
+  setTimeout(swap, D * .5 + 70);
+  Promise.all(anims.map(a => a.finished)).then(() => { wipe.classList.remove('go'); anims.forEach(a => a.cancel()); wiping = false; });
 }
 function navigate() {
   const { page, anchor } = parseHash();
@@ -534,7 +556,7 @@ if (document.fonts) document.fonts.ready.then(() => { layout(); onScroll(); });
 
 function loop(t) {
   boil(t);
-  for (const R of reels) if (R.vis && !RM && t - R.last >= 40) { R.last = t; R.draw(t); }
+  if (!wiping) for (const R of reels) if (R.vis && !RM && t - R.last >= 40) { R.last = t; R.draw(t); }
   timecode(t); vlTick(t); cursorTick();
   requestAnimationFrame(loop);
 }

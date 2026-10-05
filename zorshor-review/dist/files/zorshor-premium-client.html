@@ -105,20 +105,11 @@ html.js .rv:not(.in){transform:translateY(24px)}
 /* ---------- page change: layered paper cut-outs ---------- */
 #wipe{position:fixed;inset:0;z-index:90;pointer-events:none;display:grid;place-items:center;visibility:hidden}
 #wipe.go{visibility:visible}
-#wipe .wl{position:absolute;top:-8vh;bottom:-8vh;left:-30vw;width:160vw;height:116vh;transform:translateX(110%);filter:drop-shadow(0 18px 30px rgba(0,0,0,.18))}
+#wipe .wl{position:absolute;top:-8vh;bottom:-8vh;left:-30vw;width:160vw;max-width:none;height:116vh;transform:translateX(110%);will-change:transform;backface-visibility:hidden}
 #wipe .wl1 path{fill:var(--wipe-1)}
 #wipe .wl2 path{fill:var(--wipe-2)}
 #wipe .wl3 path{fill:var(--wipe-3)}
-#wipe.in .wl{transform:translateX(0) rotate(var(--wr,0deg));transition:transform .62s var(--ease)}
-#wipe.in .wl1{--wr:-2deg;transition-delay:0s}
-#wipe.in .wl2{--wr:1.5deg;transition-delay:.06s}
-#wipe.in .wl3{--wr:-1deg;transition-delay:.12s}
-#wipe.out .wl{transform:translateX(-120%);transition:transform .62s var(--ease)}
-#wipe.out .wl1{transition-delay:.12s}
-#wipe.out .wl2{transition-delay:.06s}
-#wipe .wipe-in{position:relative;display:grid;justify-items:center;gap:14px;text-align:center;opacity:0;transform:scale(.92) rotate(-3deg);transition:opacity .25s,transform .45s var(--spring)}
-#wipe.in .wipe-in{opacity:1;transform:rotate(-3deg);transition-delay:.3s}
-#wipe.out .wipe-in{opacity:0;transition-delay:0s}
+#wipe .wipe-in{position:relative;display:grid;justify-items:center;gap:14px;text-align:center;opacity:0;will-change:transform,opacity}
 .wipe-scene{font:400 clamp(15px,1.4vw,19px)/1 var(--f-secondary);letter-spacing:.06em;color:var(--wipe-ink);padding:9px 16px 8px;border:1.5px solid currentColor;border-radius:999px;opacity:.85}
 .wipe-word{display:inline-flex;align-items:flex-start;gap:.04em;font:400 clamp(80px,14vw,210px)/.9 var(--f-secondary);letter-spacing:.01em;color:var(--wipe-ink)}
 .wipe-bang{width:.22em;height:.6em;color:var(--wipe-bang);margin-top:.08em}
@@ -367,13 +358,13 @@ body.loaded .hero-inner>*:not(.mega){animation:fadeUp .9s var(--out) both .35s}
 /* ---------- socials ---------- */
 .sed{position:relative;height:320vh}
 .sed-sticky{position:sticky;top:0;height:100vh;display:grid;place-items:center;overflow:hidden}
-.sed-in{display:grid;justify-items:center;gap:28px;padding-top:56px}
+.sed-in{display:grid;justify-items:center;gap:22px;padding-top:40px}
 .sed-in .eyebrow{margin:0}
-.sed-stack{position:relative;display:grid;justify-items:center;gap:12px;padding:0 clamp(60px,9vw,130px)}
+.sed-stack{position:relative;display:grid;justify-items:center;gap:10px;padding:0 64px}
 .sw{font:var(--w-display) clamp(30px,4.4vw,60px)/1 var(--f-display);letter-spacing:-.035em;padding:.1em .5em .14em;border-radius:999px;color:var(--sw-idle);background:var(--sw-bg);box-shadow:var(--sw-ring);transform:scale(.82);transition:transform .6s var(--spring),background-color .35s,color .35s,box-shadow .35s}
 .sw.done{color:var(--ink)}
 .sw.on{transform:scale(1.12);background:var(--sw-on-bg);color:var(--sw-on-fg);box-shadow:var(--sw-on-shadow)}
-.sed-mega{position:absolute;right:0;top:-34px;width:clamp(54px,5vw,72px)}
+.sed-mega{position:absolute;right:0;top:-18px;width:52px;transform:rotate(-8deg)}
 .sed-mega .mg-b{fill:var(--ink)}
 .sed-mega .mg-f{fill:var(--accent);stroke:var(--ink);stroke-width:3;stroke-linejoin:round}
 .sed-mega .mg-h{fill:var(--bg);stroke:var(--ink);stroke-width:3;stroke-linejoin:round}
@@ -402,16 +393,16 @@ body.loaded .hero-inner>*:not(.mega){animation:fadeUp .9s var(--out) both .35s}
 .book small{font-size:12.5px;color:var(--muted)}
 .book-go{width:16px;height:16px;margin-left:auto;color:var(--muted);transition:transform .35s var(--out),color .35s}
 .book:hover .book-go{transform:translate(2px,-2px);color:var(--ink)}
-.offer-list{position:relative;list-style:none;margin:0 auto;padding:0;max-width:960px;display:grid}
-.ol-line{position:absolute;left:23px;top:28px;bottom:28px;width:2px;height:calc(100% - 56px);overflow:visible}
-.ol-line path{fill:none;stroke:var(--accent);stroke-width:2;vector-effect:non-scaling-stroke;stroke-dasharray:1;stroke-dashoffset:var(--tl,1)}
-.ol-item{display:grid;grid-template-columns:48px minmax(0,1fr) clamp(140px,22vw,260px);gap:clamp(18px,3vw,40px);align-items:center;padding-block:28px;border-top:1px solid var(--line)}
+.offer-list{position:relative;list-style:none;margin:0 auto;padding:0;max-width:900px;display:grid}
+.ol-line{position:absolute;left:23px;top:44px;bottom:44px;width:2px;background:var(--line);border-radius:2px;overflow:hidden}
+.ol-line::after{content:"";position:absolute;inset:0;background:var(--accent);transform-origin:50% 0;transform:scaleY(calc(1 - var(--tl,1)))}
+.ol-item{position:relative;display:grid;grid-template-columns:48px minmax(0,1fr) 260px;gap:0 32px;align-items:center;padding-block:20px;border-top:1px solid var(--line)}
 .ol-item:last-of-type{border-bottom:1px solid var(--line)}
 .ol-n{position:relative;z-index:1;display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:var(--bg);box-shadow:inset 0 0 0 1px var(--line-strong);font:600 13px/1 var(--f-body);font-variant-numeric:tabular-nums;color:var(--muted);transition:background-color .4s,color .4s,box-shadow .4s}
 .ol-item.grow .ol-n{background:var(--accent);color:var(--on-accent);box-shadow:none}
-.ol-body{display:grid;gap:8px}
-.ol-body p{color:var(--muted);max-width:46ch;font-size:15px}
-.ol-ph{aspect-ratio:4/3;border-radius:calc(var(--r-card) - 4px)}
+.ol-body{display:grid;gap:6px;max-width:44ch}
+.ol-body p{color:var(--muted);font-size:15px}
+.ol-ph{width:100%;aspect-ratio:16/9;border-radius:calc(var(--r-card) - 4px)}
 .bento{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:clamp(140px,12vw,180px);gap:12px}
 .bx{position:relative;border-radius:var(--r-card);overflow:hidden;cursor:pointer}
 .bx .ph{position:absolute;inset:0;transition:transform .9s var(--out)}
@@ -531,7 +522,7 @@ canvas.reel{width:100%;height:100%}
   --board-bg:#fff linear-gradient(transparent 31px,rgba(22,33,30,.05) 32px) 0 0/100% 32px; --board-shadow:0 0 0 1px var(--line),0 40px 80px -50px rgba(22,33,30,.35); --clip:#BDB7AC;
   --sw-idle:#CFC9BE; --sw-bg:#fff; --sw-ring:inset 0 0 0 1px var(--line); --sw-on-bg:var(--accent); --sw-on-fg:#fff; --sw-on-shadow:0 18px 40px -18px rgba(55,159,98,.6);
   --loader-bg:#fff; --ld-photo:#FFFDC7;
-  --wipe-1:#16211E; --wipe-2:#FFFDC7; --wipe-3:#379F62; --wipe-ink:#FFFFFF; --wipe-bang:#FFFDC7;
+  --wipe-1:#16211E; --wipe-2:#FFFDC7; --wipe-3:#379F62; --wipe-ink:#16211E; --wipe-bang:#16211E;
   color-scheme:light;
 }
 .sw{font-size:clamp(26px,3.6vw,48px)}
@@ -899,10 +890,10 @@ canvas.reel{width:100%;height:100%}
     <div class="wrap">
       <div class="sec-head center"><p class="eyebrow">What we offer</p><h2 class="h2 rv">Three ways we keep your feed <span class="k">busy</span>.</h2></div>
       <ol class="offer-list" id="tree">
-        <svg class="ol-line" viewBox="0 0 2 100" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M1 0V100"/></svg>
-        <li class="ol-item" data-t=".05"><span class="ol-n">01</span><div class="ol-body"><h3 class="h3">Reels &amp; shorts</h3><p>Monthly reels packs, shot in batches and cut for Instagram, YouTube Shorts and LinkedIn.</p></div><div class="ph ol-ph"></div></li>
-        <li class="ol-item" data-t=".38"><span class="ol-n">02</span><div class="ol-body"><h3 class="h3">Creator collabs</h3><p>We cast, brief and produce with creators who actually fit your brand.</p></div><div class="ph ol-ph"></div></li>
-        <li class="ol-item" data-t=".7"><span class="ol-n">03</span><div class="ol-body"><h3 class="h3">AI ad sprints</h3><p>Ten AI-assisted ad variants in a week, to find the hook that sells.</p></div><div class="ph ol-ph"></div></li>
+        <li class="ol-line" aria-hidden="true"></li>
+        <li class="ol-item" data-t=".02"><span class="ol-n">01</span><div class="ol-body"><h3 class="h3">Reels &amp; shorts</h3><p>Monthly reels packs, shot in batches and cut for Instagram, YouTube Shorts and LinkedIn.</p></div><div class="ph ol-ph"></div></li>
+        <li class="ol-item" data-t=".45"><span class="ol-n">02</span><div class="ol-body"><h3 class="h3">Creator collabs</h3><p>We cast, brief and produce with creators who actually fit your brand.</p></div><div class="ph ol-ph"></div></li>
+        <li class="ol-item" data-t=".88"><span class="ol-n">03</span><div class="ol-body"><h3 class="h3">AI ad sprints</h3><p>Ten AI-assisted ad variants in a week, to find the hook that sells.</p></div><div class="ph ol-ph"></div></li>
       </ol>
     </div>
   </section>
@@ -1368,11 +1359,15 @@ $$('svg.brush').forEach(svg => {
 });
 (() => {
   $$('#wipe .wl path').forEach((p, k) => {
-    const r = rng(5 + k * 11); let d = `M${(60 + r() * 50).toFixed(0)} -20`;
-    for (let y = 0; y <= 1000; y += 34) d += `L${(30 + r() * 80).toFixed(0)} ${y}`;
-    d += 'L60 1020L940 1020';
-    for (let y = 1000; y >= 0; y -= 34) d += `L${(880 + r() * 80).toFixed(0)} ${y}`;
-    p.setAttribute('d', d + 'Z');
+    const r = rng(5 + k * 11); let h = `M${(60 + r() * 50).toFixed(0)} -20`;
+    for (let y = 0; y <= 1000; y += 34) h += `L${(30 + r() * 80).toFixed(0)} ${y}`;
+    h += 'L60 1020L940 1020';
+    for (let y = 1000; y >= 0; y -= 34) h += `L${(880 + r() * 80).toFixed(0)} ${y}`;
+    let v = `M-20 ${(60 + r() * 50).toFixed(0)}`;
+    for (let x = 0; x <= 1000; x += 34) v += `L${x} ${(30 + r() * 80).toFixed(0)}`;
+    v += 'L1020 60L1020 940';
+    for (let x = 1000; x >= 0; x -= 34) v += `L${x} ${(880 + r() * 80).toFixed(0)}`;
+    p.dataset.h = h + 'Z'; p.dataset.v = v + 'Z'; p.setAttribute('d', p.dataset.h);
   });
 })();
 
@@ -1392,7 +1387,7 @@ class Reel {
     this.cv = cv; this.ctx = cv.getContext('2d');
     this.scene = cv.dataset.scene || 'forest'; this.seed = +cv.dataset.seed || 1; this.tint = cv.dataset.tint || '';
     this.vis = false; this.w = 0; this.h = 0; this.last = 0; this.t = 0;
-    new ResizeObserver(() => this.resize()).observe(cv);
+    new ResizeObserver(() => { clearTimeout(this.rt); this.rt = setTimeout(() => this.resize(), wiping ? 700 : 30); }).observe(cv);
   }
   setSeed(s) { this.seed = s; this.build(); this.draw(this.t); }
   resize() {
@@ -1591,7 +1586,7 @@ function show(name, anchor, animate) {
     $$('.nav-links a').forEach(a => a.dataset.link === name ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
     closeMenu();
     requestAnimationFrame(() => {
-      layout();
+      setTimeout(() => { layout(); onScroll(); }, wiping ? 650 : 0);
       if (anchor) scrollToAnchor(anchor, false); else scrollTo(0, 0);
       onScroll();
     });
@@ -1599,13 +1594,31 @@ function show(name, anchor, animate) {
   if (animate && !RM) {
     const scene = { home: '01 — home', films: '02 — films', socials: '03 — socials' }[name] || name;
     $('#wipeTo').textContent = 'scene ' + scene;
-    wipe.classList.remove('out'); wipe.classList.add('go');
-    requestAnimationFrame(() => requestAnimationFrame(() => wipe.classList.add('in')));
-    setTimeout(() => {
-      go(); wipe.classList.remove('in'); wipe.classList.add('out');
-      setTimeout(() => wipe.classList.remove('out', 'go'), 900);
-    }, 1050);
+    playWipe(go);
   } else go();
+}
+/* page change: one continuous pass — in, swap while covered, out — no hold */
+const WIPES = [
+  { shape: 'h', from: 'translate3d(110%,0,0) rotate(-2deg)', to: 'translate3d(-125%,0,0) rotate(2deg)' },
+  { shape: 'v', from: 'translate3d(0,110%,0) rotate(1.5deg)', to: 'translate3d(0,-125%,0) rotate(-1.5deg)' },
+  { shape: 'h', from: 'translate3d(-110%,0,0) rotate(2deg)', to: 'translate3d(125%,0,0) rotate(-2deg)' }
+];
+let wipeN = 0, wiping = false;
+function playWipe(swap) {
+  if (wiping) { swap(); return; }
+  wiping = true;
+  const v = WIPES[wipeN++ % WIPES.length], D = 1150, ease = 'cubic-bezier(.65,0,.35,1)';
+  wipe.classList.add('go');
+  const layers = $$('#wipe .wl');
+  layers.forEach(l => { const p = $('path', l); p.setAttribute('d', p.dataset[v.shape]); });
+  const anims = layers.map((l, k) => l.animate(
+    [{ transform: v.from }, { transform: 'translate3d(0,0,0) rotate(0deg)', offset: .5 }, { transform: v.to }],
+    { duration: D, delay: k * 55, easing: ease, fill: 'both' }));
+  $('#wipe .wipe-in').animate(
+    [{ opacity: 0, transform: 'scale(.9) rotate(-3deg)' }, { opacity: 1, transform: 'scale(1) rotate(-3deg)', offset: .42 }, { opacity: 1, transform: 'scale(1) rotate(-3deg)', offset: .58 }, { opacity: 0, transform: 'scale(1.06) rotate(-3deg)' }],
+    { duration: D, delay: 55, easing: 'ease-in-out', fill: 'both' });
+  setTimeout(swap, D * .5 + 70);
+  Promise.all(anims.map(a => a.finished)).then(() => { wipe.classList.remove('go'); anims.forEach(a => a.cancel()); wiping = false; });
 }
 function navigate() {
   const { page, anchor } = parseHash();
@@ -1855,7 +1868,7 @@ if (document.fonts) document.fonts.ready.then(() => { layout(); onScroll(); });
 
 function loop(t) {
   boil(t);
-  for (const R of reels) if (R.vis && !RM && t - R.last >= 40) { R.last = t; R.draw(t); }
+  if (!wiping) for (const R of reels) if (R.vis && !RM && t - R.last >= 40) { R.last = t; R.draw(t); }
   timecode(t); vlTick(t); cursorTick();
   requestAnimationFrame(loop);
 }
