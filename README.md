@@ -60,7 +60,12 @@ Custom has one section per screen:
 | Screen 1 · Closed | The cover display, seen while the device is folded | 1292 × 1878 |
 | Screen 2 · Open | The inner display, seen while the device is open | 2670 × 1878 |
 
-Each section takes its own image, shows a thumbnail once one is set, and clears it with the × button. Adding an image folds the device towards that screen so the result is visible right away. Each image is centred and fitted inside its screen, and a section left empty keeps the layout chosen under Wallpaper or Launcher.
+Each section takes its own image, shows a thumbnail once one is set, and clears it with the × button. Adding an image folds the device towards that screen so the result is visible right away. A section left empty keeps the layout chosen under Wallpaper or Launcher.
+
+A **Size** slider appears under each screen once it has an image. At 100% the whole image
+is fitted on that screen; above it the image is scaled up and cropped by the screen edges,
+below it sits inset. The two screens scale independently, and clearing an image returns its
+size to 100%.
 
 The slider controls the fold from closed to open. The default view is fully open and paused. The outer screen turns off at full opening.
 

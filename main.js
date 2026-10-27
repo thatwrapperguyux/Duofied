@@ -55,6 +55,8 @@ let defaultTheme = 'wallpaper';
 // Custom mode holds one image per screen: the closed cover (outer) and the open display (inner).
 // Each entry is the object URL of that screen's image, or null while the screen has none.
 const customSources = { inner: null, outer: null };
+const customImages = { inner: null, outer: null };
+const customScales = { inner: 1, outer: 1 };
 const customCanvases = {};
 const customTextures = {};
 for (const [kind, size] of Object.entries({ inner: [1600, 1125], outer: [774, 1125] })) {
@@ -88,24 +90,51 @@ const customSlots = Object.fromEntries(['inner', 'outer'].map(kind =>
   [kind, document.querySelector(`.slot[data-custom-screen="${kind}"]`)]));
 let uploadTarget = 'outer';
 
-function drawContainedImage(canvas, image) {
+// 100% fits the whole image on the screen; above that it crops, below it insets.
+function drawScreenImage(kind) {
+  const canvas = customCanvases[kind];
   const context = canvas.getContext('2d');
   context.fillStyle = '#101418';
   context.fillRect(0, 0, canvas.width, canvas.height);
-  const scale = Math.min(canvas.width / image.width, canvas.height / image.height);
-  const width = image.width * scale, height = image.height * scale;
-  context.drawImage(image, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
+  const image = customImages[kind];
+  if (image) {
+    const fit = Math.min(canvas.width / image.width, canvas.height / image.height) * customScales[kind];
+    const width = image.width * fit, height = image.height * fit;
+    context.drawImage(image, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
+  }
+  customTextures[kind].needsUpdate = true;
 }
+function syncScreenScale(input) {
+  const kind = input.dataset.screenScale;
+  customScales[kind] = Number(input.value) / 100;
+  input.style.setProperty('--progress', `${(input.value - input.min) / (input.max - input.min) * 100}%`);
+  input.parentElement.querySelector('.slot-size-value').textContent = `${input.value}%`;
+}
+document.querySelectorAll('[data-screen-scale]').forEach(input => {
+  syncScreenScale(input);
+  input.addEventListener('input', () => {
+    syncScreenScale(input);
+    drawScreenImage(input.dataset.screenScale);
+  });
+});
 function syncSlot(slot, url) {
   slot.classList.toggle('filled', Boolean(url));
   slot.querySelector('.slot-preview').style.backgroundImage = url ? `url("${url}")` : '';
   slot.querySelector('.slot-state').textContent = url ? 'Replace image' : 'Add image';
   slot.querySelector('.slot-clear').hidden = !url;
+  slot.querySelector('.slot-size')?.toggleAttribute('hidden', !url);
 }
 function setCustomSource(kind, url) {
   const previous = customSources[kind];
   if (previous) URL.revokeObjectURL(previous);
   customSources[kind] = url;
+  if (!url) {
+    // Clearing a screen drops its image and returns the size control to the fitted default.
+    customImages[kind] = null;
+    const input = document.querySelector(`[data-screen-scale="${kind}"]`);
+    input.value = 100;
+    syncScreenScale(input);
+  }
   syncSlot(customSlots[kind], url);
 }
 async function readImage(file) {
@@ -148,9 +177,9 @@ uiInput.addEventListener('change', async () => {
   const kind = uploadTarget;
   const source = await readImage(file);
   if (!source) return;
+  customImages[kind] = source.image;
   setCustomSource(kind, source.url);
-  drawContainedImage(customCanvases[kind], source.image);
-  customTextures[kind].needsUpdate = true;
+  drawScreenImage(kind);
   uiTheme = 'custom';
   applyScreens();
   setPlaying(false);

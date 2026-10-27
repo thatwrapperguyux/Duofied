@@ -122,7 +122,12 @@ input[type=color]::-moz-color-swatch{border:0;border-radius:5px}
 
 /* Image slots --------------------------------------------------------- */
 .slots{display:flex;flex-direction:column;gap:8px}
-.slot{position:relative}
+.slot{display:flex;flex-direction:column;gap:7px}
+.slot-row{position:relative}
+.slot-size{display:flex;align-items:center;gap:9px;padding:0 2px;font-size:11px;color:var(--muted)}
+.slot-size[hidden]{display:none}
+.slot-size input[type=range]{height:18px}
+.slot-size-value{min-width:34px;text-align:right;font-variant-numeric:tabular-nums}
 .slot-pick{display:flex;align-items:center;gap:11px;width:100%;min-height:54px;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);text-align:left;transition:border-color .15s,background .15s}
 .slot:not(.filled) .slot-pick{border-style:dashed;background:var(--panel-2)}
 .slot-pick:hover:not(:disabled){border-color:var(--line-strong);background:var(--panel)}

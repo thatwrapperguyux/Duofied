@@ -34,18 +34,24 @@
           </div>
           <div class="slots" id="custom-screens" role="group" aria-label="Custom screen images" hidden>
             <div class="slot" data-custom-screen="outer">
-              <button class="slot-pick" type="button" disabled>
-                <span class="slot-preview"></span>
-                <span class="slot-text"><span class="slot-title">Screen 1 · Closed</span><span class="slot-state">Add image</span></span>
-              </button>
-              <button class="slot-clear" type="button" aria-label="Remove the closed screen image" hidden disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+              <div class="slot-row">
+                <button class="slot-pick" type="button" disabled>
+                  <span class="slot-preview"></span>
+                  <span class="slot-text"><span class="slot-title">Screen 1 · Closed</span><span class="slot-state">Add image</span></span>
+                </button>
+                <button class="slot-clear" type="button" aria-label="Remove the closed screen image" hidden disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+              </div>
+              <label class="slot-size" hidden><span>Size</span><input type="range" data-screen-scale="outer" min="50" max="200" step="1" value="100" aria-label="Size of the closed screen image" disabled><span class="slot-size-value">100%</span></label>
             </div>
             <div class="slot" data-custom-screen="inner">
-              <button class="slot-pick" type="button" disabled>
-                <span class="slot-preview"></span>
-                <span class="slot-text"><span class="slot-title">Screen 2 · Open</span><span class="slot-state">Add image</span></span>
-              </button>
-              <button class="slot-clear" type="button" aria-label="Remove the open screen image" hidden disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+              <div class="slot-row">
+                <button class="slot-pick" type="button" disabled>
+                  <span class="slot-preview"></span>
+                  <span class="slot-text"><span class="slot-title">Screen 2 · Open</span><span class="slot-state">Add image</span></span>
+                </button>
+                <button class="slot-clear" type="button" aria-label="Remove the open screen image" hidden disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+              </div>
+              <label class="slot-size" hidden><span>Size</span><input type="range" data-screen-scale="inner" min="50" max="200" step="1" value="100" aria-label="Size of the open screen image" disabled><span class="slot-size-value">100%</span></label>
             </div>
           </div>
           <input id="ui-upload" type="file" accept="image/*" hidden disabled>
@@ -80,11 +86,13 @@
           <div class="background-fields" data-background-fields="image" hidden>
             <div class="slots">
               <div class="slot" data-background-slot>
-                <button class="slot-pick" type="button" disabled>
-                  <span class="slot-preview"></span>
-                  <span class="slot-text"><span class="slot-title">Backdrop</span><span class="slot-state">Add image</span></span>
-                </button>
-                <button class="slot-clear" type="button" aria-label="Remove the background image" hidden disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+                <div class="slot-row">
+                  <button class="slot-pick" type="button" disabled>
+                    <span class="slot-preview"></span>
+                    <span class="slot-text"><span class="slot-title">Backdrop</span><span class="slot-state">Add image</span></span>
+                  </button>
+                  <button class="slot-clear" type="button" aria-label="Remove the background image" hidden disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+                </div>
               </div>
             </div>
           </div>
