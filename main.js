@@ -116,30 +116,44 @@ function drawScreenImage(kind) {
   }
   customTextures[kind].needsUpdate = true;
 }
-function readTransformFields(kind) {
-  document.querySelectorAll(`[data-screen-transform="${kind}"] [data-screen-field]`).forEach(input => {
-    const value = Number(input.value);
-    if (!Number.isFinite(value)) return;
-    customTransforms[kind][input.dataset.screenField] =
-      Math.min(Number(input.max), Math.max(Number(input.min), value));
-  });
-  drawScreenImage(kind);
+function setTransformField(kind, field, value, echo = true) {
+  const group = document.querySelector(`[data-screen-transform="${kind}"]`);
+  const range = group.querySelector(`[data-screen-range="${field}"]`);
+  const clamped = Math.min(Number(range.max), Math.max(Number(range.min), value));
+  customTransforms[kind][field] = clamped;
+  range.value = clamped;
+  range.style.setProperty('--progress', `${(clamped - range.min) / (range.max - range.min) * 100}%`);
+  // Echoing back while someone is mid-type would fight the caret, so typing waits for the commit.
+  if (echo) group.querySelector(`[data-screen-field="${field}"]`).value = clamped;
 }
 function resetTransform(kind) {
-  customTransforms[kind] = { ...TRANSFORM_DEFAULTS };
-  document.querySelectorAll(`[data-screen-transform="${kind}"] [data-screen-field]`).forEach(input => {
-    input.value = TRANSFORM_DEFAULTS[input.dataset.screenField];
-  });
+  for (const [field, value] of Object.entries(TRANSFORM_DEFAULTS)) setTransformField(kind, field, value);
 }
 document.querySelectorAll('[data-screen-transform]').forEach(group => {
   const kind = group.dataset.screenTransform;
-  group.querySelectorAll('[data-screen-field]').forEach(input =>
-    input.addEventListener('input', () => readTransformFields(kind)));
+  group.querySelectorAll('[data-screen-range]').forEach(range => range.addEventListener('input', () => {
+    setTransformField(kind, range.dataset.screenRange, Number(range.value));
+    drawScreenImage(kind);
+  }));
+  group.querySelectorAll('[data-screen-field]').forEach(number => {
+    const field = number.dataset.screenField;
+    number.addEventListener('input', () => {
+      if (number.value === '' || !Number.isFinite(Number(number.value))) return;
+      setTransformField(kind, field, Number(number.value), false);
+      drawScreenImage(kind);
+    });
+    number.addEventListener('change', () => {
+      setTransformField(kind, field, Number(number.value) || TRANSFORM_DEFAULTS[field]);
+      drawScreenImage(kind);
+    });
+  });
   group.querySelector('[data-screen-reset]').addEventListener('click', () => {
     resetTransform(kind);
     drawScreenImage(kind);
   });
+  resetTransform(kind);
 });
+
 function syncSlot(slot, url) {
   slot.classList.toggle('filled', Boolean(url));
   slot.querySelector('.slot-preview').style.backgroundImage = url ? `url("${url}")` : '';

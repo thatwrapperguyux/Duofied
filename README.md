@@ -71,8 +71,9 @@ Once a screen has an image, four fields appear under it, all in percent:
 | X | Shifts the image across the screen, as a share of the screen width |
 | Y | Shifts it up or down, as a share of the screen height |
 
-Each field takes a typed value or the arrow keys. The two screens are adjusted separately,
-and **Reset** returns one screen to a plain fitted image.
+Each one has a slider for dragging and a box for typing an exact value; the two stay in
+step, and a typed value out of range is clamped when it is committed. The two screens are
+adjusted separately, and **Reset** returns one screen to a plain fitted image.
 
 The slider controls the fold from closed to open. The default view is fully open and paused. The outer screen turns off at full opening.
 
