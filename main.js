@@ -56,7 +56,13 @@ let defaultTheme = 'wallpaper';
 // Each entry is the object URL of that screen's image, or null while the screen has none.
 const customSources = { inner: null, outer: null };
 const customImages = { inner: null, outer: null };
-const customScales = { inner: 1, outer: 1 };
+// Per screen: width and height scale the fitted image independently, x and y
+// shift it across the screen. All four are percentages.
+const TRANSFORM_DEFAULTS = { width: 100, height: 100, x: 0, y: 0 };
+const customTransforms = {
+  inner: { ...TRANSFORM_DEFAULTS },
+  outer: { ...TRANSFORM_DEFAULTS },
+};
 const customCanvases = {};
 const customTextures = {};
 for (const [kind, size] of Object.entries({ inner: [1600, 1125], outer: [774, 1125] })) {
@@ -90,7 +96,8 @@ const customSlots = Object.fromEntries(['inner', 'outer'].map(kind =>
   [kind, document.querySelector(`.slot[data-custom-screen="${kind}"]`)]));
 let uploadTarget = 'outer';
 
-// 100% fits the whole image on the screen; above that it crops, below it insets.
+// Width and height of 100% fit the whole image on the screen; above that it
+// crops to the screen edges, below it insets.
 function drawScreenImage(kind) {
   const canvas = customCanvases[kind];
   const context = canvas.getContext('2d');
@@ -98,23 +105,39 @@ function drawScreenImage(kind) {
   context.fillRect(0, 0, canvas.width, canvas.height);
   const image = customImages[kind];
   if (image) {
-    const fit = Math.min(canvas.width / image.width, canvas.height / image.height) * customScales[kind];
-    const width = image.width * fit, height = image.height * fit;
-    context.drawImage(image, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
+    const transform = customTransforms[kind];
+    const fit = Math.min(canvas.width / image.width, canvas.height / image.height);
+    const width = image.width * fit * transform.width / 100;
+    const height = image.height * fit * transform.height / 100;
+    context.drawImage(image,
+      (canvas.width - width) / 2 + canvas.width * transform.x / 100,
+      (canvas.height - height) / 2 + canvas.height * transform.y / 100,
+      width, height);
   }
   customTextures[kind].needsUpdate = true;
 }
-function syncScreenScale(input) {
-  const kind = input.dataset.screenScale;
-  customScales[kind] = Number(input.value) / 100;
-  input.style.setProperty('--progress', `${(input.value - input.min) / (input.max - input.min) * 100}%`);
-  input.parentElement.querySelector('.slot-size-value').textContent = `${input.value}%`;
+function readTransformFields(kind) {
+  document.querySelectorAll(`[data-screen-transform="${kind}"] [data-screen-field]`).forEach(input => {
+    const value = Number(input.value);
+    if (!Number.isFinite(value)) return;
+    customTransforms[kind][input.dataset.screenField] =
+      Math.min(Number(input.max), Math.max(Number(input.min), value));
+  });
+  drawScreenImage(kind);
 }
-document.querySelectorAll('[data-screen-scale]').forEach(input => {
-  syncScreenScale(input);
-  input.addEventListener('input', () => {
-    syncScreenScale(input);
-    drawScreenImage(input.dataset.screenScale);
+function resetTransform(kind) {
+  customTransforms[kind] = { ...TRANSFORM_DEFAULTS };
+  document.querySelectorAll(`[data-screen-transform="${kind}"] [data-screen-field]`).forEach(input => {
+    input.value = TRANSFORM_DEFAULTS[input.dataset.screenField];
+  });
+}
+document.querySelectorAll('[data-screen-transform]').forEach(group => {
+  const kind = group.dataset.screenTransform;
+  group.querySelectorAll('[data-screen-field]').forEach(input =>
+    input.addEventListener('input', () => readTransformFields(kind)));
+  group.querySelector('[data-screen-reset]').addEventListener('click', () => {
+    resetTransform(kind);
+    drawScreenImage(kind);
   });
 });
 function syncSlot(slot, url) {
@@ -122,18 +145,16 @@ function syncSlot(slot, url) {
   slot.querySelector('.slot-preview').style.backgroundImage = url ? `url("${url}")` : '';
   slot.querySelector('.slot-state').textContent = url ? 'Replace image' : 'Add image';
   slot.querySelector('.slot-clear').hidden = !url;
-  slot.querySelector('.slot-size')?.toggleAttribute('hidden', !url);
+  slot.querySelector('.slot-transform')?.toggleAttribute('hidden', !url);
 }
 function setCustomSource(kind, url) {
   const previous = customSources[kind];
   if (previous) URL.revokeObjectURL(previous);
   customSources[kind] = url;
   if (!url) {
-    // Clearing a screen drops its image and returns the size control to the fitted default.
+    // Clearing a screen drops its image and returns the transform to the fitted default.
     customImages[kind] = null;
-    const input = document.querySelector(`[data-screen-scale="${kind}"]`);
-    input.value = 100;
-    syncScreenScale(input);
+    resetTransform(kind);
   }
   syncSlot(customSlots[kind], url);
 }
@@ -340,7 +361,7 @@ const stage = document.querySelector('.stage');
 const frameBox = document.querySelector('.frame');
 const frameSizeNote = document.querySelector('#frame-size');
 const deviceScale = document.querySelector('#device-scale');
-const scaleReadout = document.querySelector('#scale-readout');
+const deviceInputs = ['device-scale', 'rotate-x', 'rotate-y', 'rotate-z'].map(id => document.querySelector(`#${id}`));
 let frameAspect = null;
 
 function reportFrameSize() {
@@ -362,10 +383,15 @@ function applyFrame() {
   }
   reportFrameSize();
 }
-function applyScale() {
+function applyDevice() {
   phone.scale.setScalar(Number(deviceScale.value) / 100);
-  scaleReadout.textContent = `${deviceScale.value}%`;
-  deviceScale.style.setProperty('--progress', `${(deviceScale.value - deviceScale.min) / (deviceScale.max - deviceScale.min) * 100}%`);
+  phone.rotation.set(...['rotate-x', 'rotate-y', 'rotate-z']
+    .map(id => THREE.MathUtils.degToRad(Number(document.querySelector(`#${id}`).value))));
+  for (const input of deviceInputs) {
+    input.style.setProperty('--progress', `${(input.value - input.min) / (input.max - input.min) * 100}%`);
+    document.querySelector(`#${input.id}-value`).textContent =
+      input === deviceScale ? `${input.value}%` : `${input.value}°`;
+  }
 }
 document.querySelectorAll('[data-aspect]').forEach(button => button.addEventListener('click', () => {
   const [width, height] = button.dataset.aspect.split(':').map(Number);
@@ -373,9 +399,13 @@ document.querySelectorAll('[data-aspect]').forEach(button => button.addEventList
   document.querySelectorAll('[data-aspect]').forEach(tab => tab.setAttribute('aria-selected', String(tab === button)));
   applyFrame();
 }));
-deviceScale.addEventListener('input', applyScale);
+deviceInputs.forEach(input => input.addEventListener('input', applyDevice));
+document.querySelector('#device-reset').addEventListener('click', () => {
+  deviceInputs.forEach(input => { input.value = input === deviceScale ? 100 : 0; });
+  applyDevice();
+});
 new ResizeObserver(applyFrame).observe(frameBox);
-applyScale();
+applyDevice();
 
 // Recording: capture the canvas through one full fold cycle and hand back a file.
 const FOLD_CYCLE = 8.6;

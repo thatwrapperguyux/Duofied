@@ -11,7 +11,7 @@ A browser-based study of foldable screen transitions, built with Three.js.
 - Blur and darkening follow the image coordinates, including the image edges. Maximum blur radius is 72 source pixels; darkening uses twice the transition strength, capped at black.
 - Wallpaper, Launcher, and Custom modes. Custom keeps one image per screen: Screen 1 for the closed cover and Screen 2 for the open display. A screen left without an image keeps the selected default layout.
 - Background colour, gradient, image, or none at all, drawn into the canvas so exports carry it.
-- Frame the preview to a shape and scale the device inside it; the frame is what gets exported.
+- Position the device freely: size plus rotation on each axis. Frame the preview to a shape; the frame is what gets exported.
 - Record one full fold cycle as MP4, or save the current frame as a PNG.
 - Drag to orbit, scroll to zoom, or use the play button and slider to fold the device.
 - Controls live in a left sidebar beside a full-bleed preview; on narrow screens the sidebar becomes a sheet below it. Uploaded images stay in the current browser tab.
@@ -62,10 +62,17 @@ Custom has one section per screen:
 
 Each section takes its own image, shows a thumbnail once one is set, and clears it with the × button. Adding an image folds the device towards that screen so the result is visible right away. A section left empty keeps the layout chosen under Wallpaper or Launcher.
 
-A **Size** slider appears under each screen once it has an image. At 100% the whole image
-is fitted on that screen; above it the image is scaled up and cropped by the screen edges,
-below it sits inset. The two screens scale independently, and clearing an image returns its
-size to 100%.
+Once a screen has an image, four fields appear under it, all in percent:
+
+| Field | Effect |
+| --- | --- |
+| W | Width. 100% fits the image to the screen; above that it crops, below it insets |
+| H | Height, scaled independently of W, so the image can be stretched freely |
+| X | Shifts the image across the screen, as a share of the screen width |
+| Y | Shifts it up or down, as a share of the screen height |
+
+Each field takes a typed value or the arrow keys. The two screens are adjusted separately,
+and **Reset** returns one screen to a plain fitted image.
 
 The slider controls the fold from closed to open. The default view is fully open and paused. The outer screen turns off at full opening.
 
@@ -88,7 +95,12 @@ The preview area is the export area, so its shape is a control. **Fit** fills th
 **16:9**, **1:1**, and **9:16** inset a frame of that ratio and centre it. The note under
 the controls reports the pixel size a recording or PNG will come out at.
 
-**Size** scales the device within the frame, from 40% to 160%, without moving the camera.
+## Device
+
+**Size** scales the device in the frame from 20% to 300%. **X**, **Y**, and **Z** rotate it
+around each axis from -180° to 180°, which is independent of dragging the preview: the
+sliders turn the device, dragging orbits the camera around it. **Reset** returns all four to
+their defaults.
 
 ## Recording
 

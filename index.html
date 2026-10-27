@@ -41,7 +41,7 @@
                 </button>
                 <button class="slot-clear" type="button" aria-label="Remove the closed screen image" hidden disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
               </div>
-              <label class="slot-size" hidden><span>Size</span><input type="range" data-screen-scale="outer" min="50" max="200" step="1" value="100" aria-label="Size of the closed screen image" disabled><span class="slot-size-value">100%</span></label>
+              <div class="slot-transform" data-screen-transform="outer" hidden><label class="num"><span>W</span><input type="number" data-screen-field="width" min="10" max="400" step="1" value="100" aria-label="W of the closed screen image, percent" title="Use the arrow keys to adjust" disabled><i>%</i></label><label class="num"><span>H</span><input type="number" data-screen-field="height" min="10" max="400" step="1" value="100" aria-label="H of the closed screen image, percent" title="Use the arrow keys to adjust" disabled><i>%</i></label><label class="num"><span>X</span><input type="number" data-screen-field="x" min="-100" max="100" step="1" value="0" aria-label="X of the closed screen image, percent" title="Use the arrow keys to adjust" disabled><i>%</i></label><label class="num"><span>Y</span><input type="number" data-screen-field="y" min="-100" max="100" step="1" value="0" aria-label="Y of the closed screen image, percent" title="Use the arrow keys to adjust" disabled><i>%</i></label><button class="link" type="button" data-screen-reset="outer" disabled>Reset</button></div>
             </div>
             <div class="slot" data-custom-screen="inner">
               <div class="slot-row">
@@ -51,7 +51,7 @@
                 </button>
                 <button class="slot-clear" type="button" aria-label="Remove the open screen image" hidden disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
               </div>
-              <label class="slot-size" hidden><span>Size</span><input type="range" data-screen-scale="inner" min="50" max="200" step="1" value="100" aria-label="Size of the open screen image" disabled><span class="slot-size-value">100%</span></label>
+              <div class="slot-transform" data-screen-transform="inner" hidden><label class="num"><span>W</span><input type="number" data-screen-field="width" min="10" max="400" step="1" value="100" aria-label="W of the open screen image, percent" title="Use the arrow keys to adjust" disabled><i>%</i></label><label class="num"><span>H</span><input type="number" data-screen-field="height" min="10" max="400" step="1" value="100" aria-label="H of the open screen image, percent" title="Use the arrow keys to adjust" disabled><i>%</i></label><label class="num"><span>X</span><input type="number" data-screen-field="x" min="-100" max="100" step="1" value="0" aria-label="X of the open screen image, percent" title="Use the arrow keys to adjust" disabled><i>%</i></label><label class="num"><span>Y</span><input type="number" data-screen-field="y" min="-100" max="100" step="1" value="0" aria-label="Y of the open screen image, percent" title="Use the arrow keys to adjust" disabled><i>%</i></label><button class="link" type="button" data-screen-reset="inner" disabled>Reset</button></div>
             </div>
           </div>
           <input id="ui-upload" type="file" accept="image/*" hidden disabled>
@@ -99,15 +99,23 @@
           <input id="background-upload" type="file" accept="image/*" hidden disabled>
         </section>
 
+        <section class="panel" data-panel="device">
+          <div class="panel-head"><h2>Device</h2><button class="link" id="device-reset" type="button" disabled>Reset</button></div>
+          <label class="field"><span>Size</span><input id="device-scale" type="range" min="20" max="300" step="1" value="100" disabled><span class="field-value" id="device-scale-value">100%</span></label>
+          <label class="field"><span>X</span><input id="rotate-x" type="range" min="-180" max="180" step="1" value="0" aria-label="Rotate around X" disabled><span class="field-value" id="rotate-x-value">0°</span></label>
+          <label class="field"><span>Y</span><input id="rotate-y" type="range" min="-180" max="180" step="1" value="0" aria-label="Rotate around Y" disabled><span class="field-value" id="rotate-y-value">0°</span></label>
+          <label class="field"><span>Z</span><input id="rotate-z" type="range" min="-180" max="180" step="1" value="0" aria-label="Rotate around Z" disabled><span class="field-value" id="rotate-z-value">0°</span></label>
+          <p class="note">Rotation in degrees. Drag the preview to orbit the camera.</p>
+        </section>
+
         <section class="panel" data-panel="frame">
-          <div class="panel-head"><h2>Frame</h2><span class="readout" id="scale-readout">100%</span></div>
+          <div class="panel-head"><h2>Frame</h2></div>
           <div class="segmented" role="tablist" aria-label="Frame shape">
             <button role="tab" data-aspect="fit" aria-selected="true" disabled>Fit</button>
             <button role="tab" data-aspect="16:9" aria-selected="false" disabled>16:9</button>
             <button role="tab" data-aspect="1:1" aria-selected="false" disabled>1:1</button>
             <button role="tab" data-aspect="9:16" aria-selected="false" disabled>9:16</button>
           </div>
-          <label class="field"><span>Size</span><input id="device-scale" type="range" min="40" max="160" step="1" value="100" disabled></label>
           <p class="note" id="frame-size">&mdash;</p>
         </section>
 
