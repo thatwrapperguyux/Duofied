@@ -25,7 +25,7 @@
       </header>
 
       <div class="panels">
-        <section class="panel">
+        <section class="panel" data-panel="screens">
           <div class="panel-head"><h2>Screens</h2></div>
           <div class="segmented" role="tablist" aria-label="Screen UI type">
             <button role="tab" data-ui-theme="wallpaper" aria-selected="true" disabled>Wallpaper</button>
@@ -51,12 +51,13 @@
           <input id="ui-upload" type="file" accept="image/*" hidden disabled>
         </section>
 
-        <section class="panel">
+        <section class="panel" data-panel="background">
           <div class="panel-head"><h2>Background</h2></div>
           <div class="segmented" role="tablist" aria-label="Background type">
             <button role="tab" data-background-mode="color" aria-selected="true" disabled>Color</button>
             <button role="tab" data-background-mode="gradient" aria-selected="false" disabled>Gradient</button>
             <button role="tab" data-background-mode="image" aria-selected="false" disabled>Image</button>
+            <button role="tab" data-background-mode="none" aria-selected="false" disabled>None</button>
           </div>
           <div class="background-fields" data-background-fields="color">
             <div class="swatches">
@@ -90,7 +91,19 @@
           <input id="background-upload" type="file" accept="image/*" hidden disabled>
         </section>
 
-        <section class="panel">
+        <section class="panel" data-panel="frame">
+          <div class="panel-head"><h2>Frame</h2><span class="readout" id="scale-readout">100%</span></div>
+          <div class="segmented" role="tablist" aria-label="Frame shape">
+            <button role="tab" data-aspect="fit" aria-selected="true" disabled>Fit</button>
+            <button role="tab" data-aspect="16:9" aria-selected="false" disabled>16:9</button>
+            <button role="tab" data-aspect="1:1" aria-selected="false" disabled>1:1</button>
+            <button role="tab" data-aspect="9:16" aria-selected="false" disabled>9:16</button>
+          </div>
+          <label class="field"><span>Size</span><input id="device-scale" type="range" min="40" max="160" step="1" value="100" disabled></label>
+          <p class="note" id="frame-size">&mdash;</p>
+        </section>
+
+        <section class="panel" data-panel="fold">
           <div class="panel-head"><h2>Fold</h2><span class="readout" id="angle-readout">180°</span></div>
           <div class="fold-row">
             <button id="play" class="icon-button" aria-label="Play animation" title="Play animation" disabled>
@@ -108,15 +121,20 @@
       </div>
 
       <footer class="sidebar-foot">
-        <button id="record" class="button primary" aria-label="Record the fold animation" disabled>
-          <span class="record-dot" aria-hidden="true"></span><span id="record-label">Record MP4</span>
-        </button>
+        <div class="actions">
+          <button id="record" class="button primary" aria-label="Record the fold animation" disabled>
+            <span class="record-dot" aria-hidden="true"></span><span id="record-label">Record MP4</span>
+          </button>
+          <button id="snapshot" class="button ghost" aria-label="Save the current frame as a PNG" title="Save the current frame as a PNG" disabled>PNG</button>
+        </div>
         <p class="hint">Captures one full fold cycle.</p>
       </footer>
     </aside>
 
     <main class="stage">
-      <div id="viewport" aria-label="iPhone Duo 3D model. Drag to rotate, scroll to zoom."></div>
+      <div class="frame">
+        <div id="viewport" aria-label="iPhone Duo 3D model. Drag to rotate, scroll to zoom."></div>
+      </div>
     </main>
   </div>
   <script type="module" src="./main.js"></script>

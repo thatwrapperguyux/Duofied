@@ -10,8 +10,9 @@ A browser-based study of foldable screen transitions, built with Three.js.
 - Screen content uses a fixed front-view projection during folding. The outer UI stays aligned with its hinge-side left edge.
 - Blur and darkening follow the image coordinates, including the image edges. Maximum blur radius is 72 source pixels; darkening uses twice the transition strength, capped at black.
 - Wallpaper, Launcher, and Custom modes. Custom keeps one image per screen: Screen 1 for the closed cover and Screen 2 for the open display. A screen left without an image keeps the selected default layout.
-- Background colour, gradient, or image, drawn into the canvas so recordings include it.
-- Record one full fold cycle and download it as an MP4.
+- Background colour, gradient, image, or none at all, drawn into the canvas so exports carry it.
+- Frame the preview to a shape and scale the device inside it; the frame is what gets exported.
+- Record one full fold cycle as MP4, or save the current frame as a PNG.
 - Drag to orbit, scroll to zoom, or use the play button and slider to fold the device.
 - Controls live in a left sidebar beside a full-bleed preview; on narrow screens the sidebar becomes a sheet below it. Uploaded images stay in the current browser tab.
 
@@ -65,21 +66,38 @@ The slider controls the fold from closed to open. The default view is fully open
 
 ## Background
 
-Choose **Color**, **Gradient**, or **Image** under Background.
-
 | Option | Controls |
 | --- | --- |
 | Color | Six preset swatches and a colour picker |
 | Gradient | Two colour stops and an angle, following the CSS `linear-gradient` convention where 0° points up |
-| Image | One image, centred and scaled to cover the page |
+| Image | One image, centred and scaled to cover the frame |
+| None | No background; the canvas keeps its alpha channel and the preview shows a checkerboard |
 
-The background is drawn into the WebGL canvas and mirrored onto the page behind the control dock, so the two always match and anything recorded carries the background with it.
+Every option except None is drawn into the WebGL canvas, so whatever is exported carries
+the background with it. **None** leaves the canvas transparent for compositing, which
+changes what the export formats can hold — see below.
+
+## Frame
+
+The preview area is the export area, so its shape is a control. **Fit** fills the window;
+**16:9**, **1:1**, and **9:16** inset a frame of that ratio and centre it. The note under
+the controls reports the pixel size a recording or PNG will come out at.
+
+**Size** scales the device within the frame, from 40% to 160%, without moving the camera.
 
 ## Recording
 
 The record button beside the fold slider captures one full cycle — open, closed, open — and downloads the result. Recording starts from fully open and covers 8.6 seconds of animation; the button fills to show progress, and clicking it again stops early and saves what was captured. The other controls stay locked until it finishes. Only the 3D canvas is recorded, never the control dock.
 
-The file is H.264 in an MP4 container wherever the browser can encode it, which covers current Chrome, Edge, and Safari. Browsers without an H.264 encoder fall back through the remaining supported formats to WebM, and the file extension follows whatever was actually recorded.
+**PNG** beside it saves the frame on screen as a still, at the frame's pixel size.
+
+The video is H.264 in an MP4 container wherever the browser can encode it, which covers
+current Chrome, Edge, and Safari. Browsers without an H.264 encoder fall back through the
+remaining supported formats to WebM, and the file extension follows whatever was recorded.
+
+MP4 has no alpha channel. With the background set to **None** the button therefore records
+WebM, which does carry alpha, and says so. For a transparent still, PNG keeps the alpha
+channel in every browser.
 
 ## Source map
 

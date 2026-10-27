@@ -217,12 +217,14 @@ let backgroundMode = 'color';
 let backgroundImage = null;
 let backgroundImageURL = null;
 
-function backgroundStyle() {
-  if (backgroundMode === 'gradient') return `linear-gradient(${gradientAngle.value}deg, ${gradientFrom.value}, ${gradientTo.value})`;
-  if (backgroundMode === 'image' && backgroundImageURL) return `#101418 url("${backgroundImageURL}") center / cover no-repeat`;
-  return backgroundColor.value;
-}
 function drawBackground() {
+  // No background at all: the canvas keeps its alpha so the frame can be composited.
+  document.body.classList.toggle('transparent', backgroundMode === 'none');
+  if (backgroundMode === 'none') {
+    scene.background = null;
+    return;
+  }
+  scene.background = backgroundTexture;
   const rect = viewport.getBoundingClientRect();
   if (rect.width < 1 || rect.height < 1) return;
   const scale = Math.min(devicePixelRatio, 2, 2560 / rect.width);
@@ -258,7 +260,6 @@ function drawBackground() {
     context.drawImage(backgroundImage, (pageWidth - width) / 2, (pageHeight - height) / 2, width, height);
   }
   backgroundTexture.needsUpdate = true;
-  document.body.style.background = backgroundStyle();
 }
 function setBackgroundImage(source) {
   if (backgroundImageURL) URL.revokeObjectURL(backgroundImageURL);
@@ -274,6 +275,7 @@ document.querySelectorAll('[data-background-mode]').forEach(button => button.add
   document.querySelectorAll('[data-background-fields]').forEach(fields =>
     fields.hidden = fields.dataset.backgroundFields !== backgroundMode);
   drawBackground();
+  updateRecordLabel();
   if (backgroundMode === 'image' && !backgroundImage) backgroundInput.click();
 }));
 document.querySelectorAll('[data-background-color]').forEach(button => button.addEventListener('click', () => {
@@ -304,21 +306,75 @@ backgroundInput.addEventListener('change', async () => {
 });
 syncSwatches();
 
+// Frame: the preview area doubles as the export area, so its shape is a control.
+const stage = document.querySelector('.stage');
+const frameBox = document.querySelector('.frame');
+const frameSizeNote = document.querySelector('#frame-size');
+const deviceScale = document.querySelector('#device-scale');
+const scaleReadout = document.querySelector('#scale-readout');
+let frameAspect = null;
+
+function reportFrameSize() {
+  const rect = viewport.getBoundingClientRect();
+  const pixels = Math.min(devicePixelRatio, 2);
+  frameSizeNote.textContent = `${Math.round(rect.width * pixels)} × ${Math.round(rect.height * pixels)} px export`;
+}
+function applyFrame() {
+  stage.classList.toggle('framed', Boolean(frameAspect));
+  if (!frameAspect) {
+    viewport.style.width = '';
+    viewport.style.height = '';
+  } else {
+    // Measured after the class lands, so the inset frame reports its own box.
+    const box = frameBox.getBoundingClientRect();
+    const width = Math.min(box.width, box.height * frameAspect);
+    viewport.style.width = `${Math.round(width)}px`;
+    viewport.style.height = `${Math.round(width / frameAspect)}px`;
+  }
+  reportFrameSize();
+}
+function applyScale() {
+  phone.scale.setScalar(Number(deviceScale.value) / 100);
+  scaleReadout.textContent = `${deviceScale.value}%`;
+  deviceScale.style.setProperty('--progress', `${(deviceScale.value - deviceScale.min) / (deviceScale.max - deviceScale.min) * 100}%`);
+}
+document.querySelectorAll('[data-aspect]').forEach(button => button.addEventListener('click', () => {
+  const [width, height] = button.dataset.aspect.split(':').map(Number);
+  frameAspect = button.dataset.aspect === 'fit' ? null : width / height;
+  document.querySelectorAll('[data-aspect]').forEach(tab => tab.setAttribute('aria-selected', String(tab === button)));
+  applyFrame();
+}));
+deviceScale.addEventListener('input', applyScale);
+new ResizeObserver(applyFrame).observe(frameBox);
+applyScale();
+
 // Recording: capture the canvas through one full fold cycle and hand back a file.
 const FOLD_CYCLE = 8.6;
 const recordButton = document.querySelector('#record');
-// Prefer H.264 in MP4, which every player opens; the rest are fallbacks for browsers without it.
-const recordType = window.MediaRecorder && [
-  'video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1.4D401E', 'video/mp4;codecs=avc1',
-  'video/mp4;codecs=h264', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm',
-].find(type => MediaRecorder.isTypeSupported(type));
-const canRecord = Boolean(recordType && renderer.domElement.captureStream);
+const recordLabel = document.querySelector('#record-label');
+// H.264 in MP4 plays everywhere but carries no alpha channel, so a transparent
+// background records as WebM instead, which does.
+const MP4_TYPES = ['video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1.4D401E',
+  'video/mp4;codecs=avc1', 'video/mp4;codecs=h264', 'video/mp4'];
+const ALPHA_TYPES = ['video/webm;codecs=vp8', 'video/webm;codecs=vp9', 'video/webm'];
+function pickRecordType() {
+  if (!window.MediaRecorder) return undefined;
+  const types = backgroundMode === 'none' ? ALPHA_TYPES : [...MP4_TYPES, ...ALPHA_TYPES];
+  return types.find(type => MediaRecorder.isTypeSupported(type));
+}
+function updateRecordLabel() {
+  if (recorder) return;
+  const type = pickRecordType();
+  recordLabel.textContent = type?.startsWith('video/mp4') ? 'Record MP4' : 'Record WebM';
+}
+const canRecord = Boolean(pickRecordType() && renderer.domElement.captureStream);
 let recorder = null;
 let recordElapsed = 0;
 
 function setRecording(value) {
   recordButton.classList.toggle('recording', value);
-  document.querySelector('#record-label').textContent = value ? 'Stop and save' : 'Record MP4';
+  if (value) recordLabel.textContent = 'Stop and save';
+  else updateRecordLabel();
   const label = value ? 'Stop recording and download' : 'Record the fold animation';
   recordButton.setAttribute('aria-label', label);
   recordButton.title = label;
@@ -328,7 +384,8 @@ function setRecording(value) {
   });
 }
 function startRecording() {
-  if (!canRecord) return;
+  const recordType = pickRecordType();
+  if (!recordType || !renderer.domElement.captureStream) return;
   const stream = renderer.domElement.captureStream(60);
   const chunks = [];
   recorder = new MediaRecorder(stream, { mimeType: recordType, videoBitsPerSecond: 16000000 });
@@ -340,12 +397,8 @@ function startRecording() {
     recorder = null;
     setRecording(false);
     setPlaying(false);
-    const url = URL.createObjectURL(new Blob(chunks, { type: recordType }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `iphone-duo-fold.${recordType.startsWith('video/mp4') ? 'mp4' : 'webm'}`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    download(new Blob(chunks, { type: recordType }),
+      `duofied-fold.${recordType.startsWith('video/mp4') ? 'mp4' : 'webm'}`);
   });
   transition = null;
   recordElapsed = 0;
@@ -358,6 +411,18 @@ function startRecording() {
 }
 recordButton.addEventListener('click', () => (recorder ? recorder.stop() : startRecording()));
 
+function download(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+// A PNG keeps the alpha channel, so it is how a transparent frame leaves the page.
+let snapshotPending = false;
+document.querySelector('#snapshot').addEventListener('click', () => { snapshotPending = true; });
+
 function resize() {
   const { width, height } = viewport.getBoundingClientRect();
   renderer.setSize(width, height);
@@ -366,6 +431,7 @@ function resize() {
   camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(height / pixelsPerUnit / 2 / 40));
   camera.updateProjectionMatrix();
   drawBackground();
+  reportFrameSize();
 }
 new ResizeObserver(resize).observe(viewport);
 
@@ -527,6 +593,7 @@ try {
     recordButton.disabled = true;
     recordButton.title = 'This browser cannot record video';
   }
+  applyFrame();
   ready = true;
   setAngle(180);
 } catch (error) {
@@ -559,4 +626,9 @@ renderer.setAnimationLoop(now => {
   }
   controls.update();
   renderer.render(scene, camera);
+  if (snapshotPending) {
+    // Taken here, while the drawing buffer still holds the frame just rendered.
+    snapshotPending = false;
+    renderer.domElement.toBlob(blob => blob && download(blob, 'duofied-frame.png'), 'image/png');
+  }
 });
