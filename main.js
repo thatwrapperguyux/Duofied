@@ -5,10 +5,8 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadDefaultUIs } from './ui.js';
 
 const viewport = document.querySelector('#viewport');
-const slider = document.querySelector('#angle');
-const play = document.querySelector('#play');
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(32, 1, .1, 250);
+const camera = new THREE.PerspectiveCamera(30, 1, .1, 500);
 camera.position.set(0, 0, 40);
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -21,8 +19,8 @@ const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(environment, .04).texture;
 environment.dispose();
 pmrem.dispose();
-scene.environmentIntensity = 1.35;
-scene.add(new THREE.HemisphereLight(0xffffff, 0xb5baa8, 1.8));
+const hemisphere = new THREE.HemisphereLight(0xffffff, 0xb5baa8, 1.8);
+scene.add(hemisphere);
 const key = new THREE.DirectionalLight(0xfffcf5, 2.6);
 key.position.set(-15, 25, 30);
 scene.add(key);
@@ -32,17 +30,13 @@ scene.add(rim);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.enablePan = false;
-controls.minDistance = 21;
-controls.maxDistance = 65;
+controls.minDistance = 6;
+controls.maxDistance = 400;
 controls.target.set(0, 0, .275454);
 controls.update();
 const phone = new THREE.Group();
 scene.add(phone);
 const bend = { value: 0 };
-let angle = 180;
-let playing = false;
-let phase = 0;
-let transition = null;
 let ready = false;
 const screens = {};
 const uiReferenceEye = new THREE.Vector3(0, 0, 40);
@@ -52,27 +46,36 @@ const outerUIFrame = new THREE.Vector4(.23396, .27173 - 5.8974, 7.73936, 11.2513
 const defaultUIs = await loadDefaultUIs();
 let uiTheme = 'wallpaper';
 let defaultTheme = 'wallpaper';
-// Custom mode holds one image per screen: the closed cover (outer) and the open display (inner).
-// Each entry is the object URL of that screen's image, or null while the screen has none.
-const customSources = { inner: null, outer: null };
-const customImages = { inner: null, outer: null };
-// Per screen: width and height scale the fitted image independently, x and y
-// shift it across the screen. All four are percentages.
-const TRANSFORM_DEFAULTS = { width: 100, height: 100, x: 0, y: 0 };
-const customTransforms = {
-  inner: { ...TRANSFORM_DEFAULTS },
-  outer: { ...TRANSFORM_DEFAULTS },
-};
-const customCanvases = {};
-const customTextures = {};
-for (const [kind, size] of Object.entries({ inner: [1600, 1125], outer: [774, 1125] })) {
+
+const toast = document.querySelector('#toast');
+let toastTimer = 0;
+function say(message) {
+  toast.textContent = message;
+  toast.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toast.hidden = true; }, 2600);
+}
+function download(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+
+// Screen canvases: one per display, drawn to by whichever media that screen holds.
+const SCREEN_SIZES = { inner: [1600, 1125], outer: [774, 1125] };
+const screenCanvases = {};
+const screenTextures = {};
+for (const [kind, size] of Object.entries(SCREEN_SIZES)) {
   const canvas = document.createElement('canvas');
   [canvas.width, canvas.height] = size;
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  customCanvases[kind] = canvas;
-  customTextures[kind] = texture;
+  screenCanvases[kind] = canvas;
+  screenTextures[kind] = texture;
 }
 for (const kind of ['inner', 'outer']) {
   const defaultTextures = {};
@@ -90,199 +93,350 @@ for (const kind of ['inner', 'outer']) {
     pixel: { value: new THREE.Vector2(1 / defaultUIs[uiTheme][kind].width, 1 / defaultUIs[uiTheme][kind].height) },
   };
 }
-const uiInput = document.querySelector('#ui-upload');
-const customPanel = document.querySelector('#custom-screens');
-const customSlots = Object.fromEntries(['inner', 'outer'].map(kind =>
-  [kind, document.querySelector(`.slot[data-custom-screen="${kind}"]`)]));
-let uploadTarget = 'outer';
 
-// Width and height of 100% fit the whole image on the screen; above that it
-// crops to the screen edges, below it insets.
-function drawScreenImage(kind) {
-  const canvas = customCanvases[kind];
+// Media: each screen holds an image or a video, placed by its own transform.
+const TRANSFORM_DEFAULTS = { width: 100, height: 100, x: 0, y: 0 };
+const TRANSFORM_FIELDS = [
+  { name: 'width', short: 'W', min: 10, max: 300 },
+  { name: 'height', short: 'H', min: 10, max: 300 },
+  { name: 'x', short: 'X', min: -100, max: 100 },
+  { name: 'y', short: 'Y', min: -100, max: 100 },
+];
+const media = { inner: null, outer: null };
+const transforms = { inner: { ...TRANSFORM_DEFAULTS }, outer: { ...TRANSFORM_DEFAULTS } };
+
+function mediaSize(entry) {
+  return entry.kind === 'video'
+    ? { width: entry.element.videoWidth, height: entry.element.videoHeight }
+    : { width: entry.element.naturalWidth, height: entry.element.naturalHeight };
+}
+function drawScreen(kind) {
+  const canvas = screenCanvases[kind];
   const context = canvas.getContext('2d');
   context.fillStyle = '#101418';
   context.fillRect(0, 0, canvas.width, canvas.height);
-  const image = customImages[kind];
-  if (image) {
-    const transform = customTransforms[kind];
-    const fit = Math.min(canvas.width / image.width, canvas.height / image.height);
-    const width = image.width * fit * transform.width / 100;
-    const height = image.height * fit * transform.height / 100;
-    context.drawImage(image,
-      (canvas.width - width) / 2 + canvas.width * transform.x / 100,
-      (canvas.height - height) / 2 + canvas.height * transform.y / 100,
-      width, height);
+  const entry = media[kind];
+  if (entry) {
+    const source = mediaSize(entry);
+    if (source.width && source.height) {
+      const transform = transforms[kind];
+      const fit = Math.min(canvas.width / source.width, canvas.height / source.height);
+      const width = source.width * fit * transform.width / 100;
+      const height = source.height * fit * transform.height / 100;
+      context.drawImage(entry.element,
+        (canvas.width - width) / 2 + canvas.width * transform.x / 100,
+        (canvas.height - height) / 2 + canvas.height * transform.y / 100,
+        width, height);
+    }
   }
-  customTextures[kind].needsUpdate = true;
+  screenTextures[kind].needsUpdate = true;
 }
-function setTransformField(kind, field, value, echo = true) {
-  const group = document.querySelector(`[data-screen-transform="${kind}"]`);
-  const range = group.querySelector(`[data-screen-range="${field}"]`);
-  const clamped = Math.min(Number(range.max), Math.max(Number(range.min), value));
-  customTransforms[kind][field] = clamped;
-  range.value = clamped;
-  range.style.setProperty('--progress', `${(clamped - range.min) / (range.max - range.min) * 100}%`);
-  // Echoing back while someone is mid-type would fight the caret, so typing waits for the commit.
-  if (echo) group.querySelector(`[data-screen-field="${field}"]`).value = clamped;
-}
-function resetTransform(kind) {
-  for (const [field, value] of Object.entries(TRANSFORM_DEFAULTS)) setTransformField(kind, field, value);
-}
-document.querySelectorAll('[data-screen-transform]').forEach(group => {
+
+// Transform rows are generated so both screens stay identical by construction.
+for (const group of document.querySelectorAll('[data-screen-transform]')) {
   const kind = group.dataset.screenTransform;
-  group.querySelectorAll('[data-screen-range]').forEach(range => range.addEventListener('input', () => {
-    setTransformField(kind, range.dataset.screenRange, Number(range.value));
-    drawScreenImage(kind);
+  for (const field of TRANSFORM_FIELDS) {
+    const row = document.createElement('div');
+    row.className = 'track-row';
+    row.innerHTML = `<span aria-hidden="true">${field.short}</span>`
+      + `<input type="range" data-range="${field.name}" min="${field.min}" max="${field.max}" step="1" disabled>`
+      + `<input type="number" data-number="${field.name}" min="${field.min}" max="${field.max}" step="1" disabled>`;
+    group.append(row);
+  }
+  const reset = document.createElement('button');
+  reset.type = 'button';
+  reset.className = 'link';
+  reset.textContent = 'Reset placement';
+  reset.disabled = true;
+  reset.addEventListener('click', () => {
+    for (const [name, value] of Object.entries(TRANSFORM_DEFAULTS)) setTransform(kind, name, value);
+    drawScreen(kind);
+  });
+  group.append(reset);
+  group.querySelectorAll('[data-range]').forEach(range => range.addEventListener('input', () => {
+    setTransform(kind, range.dataset.range, Number(range.value));
+    drawScreen(kind);
   }));
-  group.querySelectorAll('[data-screen-field]').forEach(number => {
-    const field = number.dataset.screenField;
+  group.querySelectorAll('[data-number]').forEach(number => {
+    const name = number.dataset.number;
     number.addEventListener('input', () => {
       if (number.value === '' || !Number.isFinite(Number(number.value))) return;
-      setTransformField(kind, field, Number(number.value), false);
-      drawScreenImage(kind);
+      setTransform(kind, name, Number(number.value), false);
+      drawScreen(kind);
     });
     number.addEventListener('change', () => {
-      setTransformField(kind, field, Number(number.value) || TRANSFORM_DEFAULTS[field]);
-      drawScreenImage(kind);
+      setTransform(kind, name, Number(number.value) || TRANSFORM_DEFAULTS[name]);
+      drawScreen(kind);
     });
   });
-  group.querySelector('[data-screen-reset]').addEventListener('click', () => {
-    resetTransform(kind);
-    drawScreenImage(kind);
-  });
-  resetTransform(kind);
-});
+}
+function setTransform(kind, name, value, echo = true) {
+  const group = document.querySelector(`[data-screen-transform="${kind}"]`);
+  const range = group.querySelector(`[data-range="${name}"]`);
+  const clamped = Math.min(Number(range.max), Math.max(Number(range.min), value));
+  transforms[kind][name] = clamped;
+  range.value = clamped;
+  range.style.setProperty('--progress', `${(clamped - range.min) / (range.max - range.min) * 100}%`);
+  // Echoing back mid-edit would fight the caret, so typing waits for the commit.
+  if (echo) group.querySelector(`[data-number="${name}"]`).value = clamped;
+}
+for (const kind of ['inner', 'outer']) {
+  for (const [name, value] of Object.entries(TRANSFORM_DEFAULTS)) setTransform(kind, name, value);
+}
 
-function syncSlot(slot, url) {
-  slot.classList.toggle('filled', Boolean(url));
-  slot.querySelector('.slot-preview').style.backgroundImage = url ? `url("${url}")` : '';
-  slot.querySelector('.slot-state').textContent = url ? 'Replace image' : 'Add image';
-  slot.querySelector('.slot-clear').hidden = !url;
-  slot.querySelector('.slot-transform')?.toggleAttribute('hidden', !url);
-}
-function setCustomSource(kind, url) {
-  const previous = customSources[kind];
-  if (previous) URL.revokeObjectURL(previous);
-  customSources[kind] = url;
-  if (!url) {
-    // Clearing a screen drops its image and returns the transform to the fitted default.
-    customImages[kind] = null;
-    resetTransform(kind);
+function setMedia(kind, entry) {
+  const previous = media[kind];
+  if (previous) {
+    if (previous.kind === 'video') previous.element.pause();
+    URL.revokeObjectURL(previous.url);
   }
-  syncSlot(customSlots[kind], url);
+  media[kind] = entry;
+  const panel = document.querySelector(`[data-loaded="${kind}"]`);
+  panel.hidden = !entry;
+  if (entry) {
+    panel.querySelector('.loaded-name').textContent = entry.name;
+    panel.querySelector('.loaded-kind').textContent = entry.kind === 'video' ? 'Video' : 'Image';
+    panel.querySelector('.loaded-preview').style.backgroundImage =
+      entry.kind === 'image' ? `url("${entry.url}")` : '';
+    panel.querySelector('.loaded-preview').style.backgroundColor = entry.kind === 'video' ? '#16171c' : '';
+  }
+  const group = document.querySelector(`[data-screen-transform="${kind}"]`);
+  if (group) group.hidden = !entry;
+  if (!entry) for (const [name, value] of Object.entries(TRANSFORM_DEFAULTS)) setTransform(kind, name, value);
+  drawScreen(kind);
+  applyScreens();
 }
-async function readImage(file) {
+
+async function readMedia(file) {
   const url = URL.createObjectURL(file);
-  const image = new Image();
-  image.src = url;
+  const name = file.name || 'media';
+  if (file.type.startsWith('video/')) {
+    const element = document.createElement('video');
+    Object.assign(element, { src: url, loop: true, muted: true, playsInline: true, crossOrigin: 'anonymous' });
+    try {
+      await new Promise((resolve, reject) => {
+        element.onloadeddata = resolve;
+        element.onerror = () => reject(new Error('decode failed'));
+        setTimeout(() => reject(new Error('timed out')), 20000);
+      });
+      await element.play().catch(() => {});
+      return { kind: 'video', element, url, name };
+    } catch {
+      URL.revokeObjectURL(url);
+      say('That video could not be read. Try MP4, WebM or Ogg.');
+      return null;
+    }
+  }
+  const element = new Image();
+  element.src = url;
   try {
-    await image.decode();
-    return { image, url };
+    await element.decode();
+    return { kind: 'image', element, url, name };
   } catch {
     URL.revokeObjectURL(url);
-    alert('Unable to read this image. Choose a PNG, JPG, or WebP file.');
+    say('That image could not be read. Try PNG, JPG or WebP.');
     return null;
   }
 }
-// Each screen draws its own custom image; a screen left without one keeps the selected layout.
+
+const mediaInput = document.querySelector('#media-upload');
+const backdropInput = document.querySelector('#backdrop-upload');
+let mediaTarget = 'outer';
+document.querySelectorAll('[data-pick]').forEach(button => button.addEventListener('click', () => {
+  const target = button.dataset.pick;
+  if (target === 'backdrop') { backdropInput.click(); return; }
+  mediaTarget = target;
+  mediaInput.click();
+}));
+document.querySelectorAll('[data-clear]').forEach(button => button.addEventListener('click', () => {
+  const target = button.dataset.clear;
+  if (target === 'backdrop') setBackdrop(null);
+  else setMedia(target, null);
+}));
+mediaInput.addEventListener('change', async () => {
+  const file = mediaInput.files[0];
+  mediaInput.value = '';
+  if (!file) return;
+  const entry = await readMedia(file);
+  if (!entry) return;
+  setMedia(mediaTarget, entry);
+  uiTheme = 'custom';
+  applyScreens();
+  setModel({ fold: mediaTarget === 'inner' ? 180 : 0 });
+});
+// Dropping a file onto a zone is the same as picking it there.
+document.querySelectorAll('[data-drop]').forEach(zone => {
+  const target = zone.dataset.drop;
+  zone.addEventListener('dragover', event => { event.preventDefault(); zone.classList.add('over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('over'));
+  zone.addEventListener('drop', async event => {
+    event.preventDefault();
+    zone.classList.remove('over');
+    const file = event.dataTransfer?.files?.[0];
+    if (!file || !ready) return;
+    if (target === 'backdrop') {
+      const entry = await readMedia(file);
+      if (entry?.kind === 'image') setBackdrop(entry);
+      else if (entry) say('The backdrop takes an image.');
+      return;
+    }
+    const entry = await readMedia(file);
+    if (!entry) return;
+    setMedia(target, entry);
+    uiTheme = 'custom';
+    applyScreens();
+  });
+});
+
 function applyScreens() {
   for (const [kind, screen] of Object.entries(screens)) {
-    const custom = uiTheme === 'custom' && customSources[kind];
-    const texture = custom ? customTextures[kind] : screen.defaultTextures[defaultTheme];
+    const custom = uiTheme === 'custom' && media[kind];
+    const texture = custom ? screenTextures[kind] : screen.defaultTextures[defaultTheme];
     screen.material.map = texture;
     screen.pixel.value.set(1 / texture.image.width, 1 / texture.image.height);
     screen.frame.value.copy(kind === 'inner' ? innerUIFrame : outerUIFrame);
     screen.gradient.value.set(kind === 'inner' ? .5 : 0, kind === 'inner' ? 0 : 1);
   }
-  syncThemeButtons();
-}
-function syncThemeButtons() {
-  document.querySelectorAll('[data-ui-theme]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.uiTheme === uiTheme)));
-  customPanel.hidden = uiTheme !== 'custom';
-}
-function pickCustomImage(kind) {
-  uploadTarget = kind;
-  uiInput.click();
-}
-uiInput.addEventListener('change', async () => {
-  const file = uiInput.files[0];
-  uiInput.value = '';
-  if (!file) return;
-  const kind = uploadTarget;
-  const source = await readImage(file);
-  if (!source) return;
-  customImages[kind] = source.image;
-  setCustomSource(kind, source.url);
-  drawScreenImage(kind);
-  uiTheme = 'custom';
-  applyScreens();
-  setPlaying(false);
-  // Fold towards the screen this image belongs to.
-  transition = { from: angle, to: kind === 'inner' ? 180 : 0, elapsed: 0 };
-});
-for (const [kind, slot] of Object.entries(customSlots)) {
-  slot.querySelector('.slot-pick').addEventListener('click', () => pickCustomImage(kind));
-  slot.querySelector('.slot-clear').addEventListener('click', () => {
-    setCustomSource(kind, null);
-    applyScreens();
-  });
+  document.querySelectorAll('[data-ui-theme]').forEach(button =>
+    button.setAttribute('aria-selected', String(button.dataset.uiTheme === uiTheme)));
+  document.querySelector('#media-sections').hidden = uiTheme !== 'custom';
 }
 document.querySelectorAll('[data-ui-theme]').forEach(button => button.addEventListener('click', () => {
   uiTheme = button.dataset.uiTheme;
   if (uiTheme !== 'custom') defaultTheme = uiTheme;
   applyScreens();
-  // Offer the closed screen first when custom mode has no images yet.
-  if (uiTheme === 'custom' && !customSources.inner && !customSources.outer) pickCustomImage('outer');
 }));
 
-function setPlaying(value) {
-  playing = value;
-  document.querySelector('#pause-icon').toggleAttribute('hidden', !value);
-  document.querySelector('#play-icon').toggleAttribute('hidden', value);
-  play.setAttribute('aria-label', value ? 'Pause animation' : 'Play animation');
+// Model: every value here can be keyframed.
+const MODEL_DEFAULTS = {
+  positionX: 0, positionY: 0, positionZ: 0,
+  rotationX: 0, rotationY: 0, rotationZ: 0,
+  fov: 30, scale: 100, brightness: 100, fold: 180,
+};
+const POSITION_UNIT = 10;
+const model = { ...MODEL_DEFAULTS };
+const modelInputs = [...document.querySelectorAll('[data-model]')];
+
+function formatModel(name, value) {
+  if (name === 'brightness') return (value / 100).toFixed(2);
+  if (name === 'scale') return `${Math.round(value)}%`;
+  if (name === 'fov' || name === 'fold') return `${Math.round(value)}°`;
+  return String(value);
 }
-const angleReadout = document.querySelector('#angle-readout');
-function setAngle(value) {
-  angle = value;
-  slider.value = value;
-  slider.style.setProperty('--progress', `${value / 1.8}%`);
-  angleReadout.textContent = `${Math.round(value)}°`;
-  bend.value = (180 - value) / 180 * Math.PI;
-  screens.outer.material.color.setScalar(value >= 180 ? 0 : 1);
+function syncModelInputs() {
+  for (const input of modelInputs) {
+    const name = input.dataset.model;
+    const value = model[name];
+    if (input.type === 'range') {
+      input.value = value;
+      const meter = input.closest('.meter');
+      meter.style.setProperty('--fill', `${(value - input.min) / (input.max - input.min) * 100}%`);
+      meter.querySelector('.meter-value').textContent = formatModel(name, value);
+    } else if (document.activeElement !== input) {
+      input.value = name.startsWith('position') ? Number(value.toFixed(2)) : Math.round(value);
+    }
+  }
 }
-play.addEventListener('click', () => {
-  transition = null;
-  if (!playing) phase = 1.2 + Math.acos(2 * angle / 180 - 1) / Math.PI * 3.1;
-  setPlaying(!playing);
+function applyModel() {
+  phone.position.set(model.positionX * POSITION_UNIT, model.positionY * POSITION_UNIT, model.positionZ * POSITION_UNIT);
+  phone.rotation.set(...['rotationX', 'rotationY', 'rotationZ'].map(name => THREE.MathUtils.degToRad(model[name])));
+  phone.scale.setScalar(model.scale / 100);
+  bend.value = (180 - model.fold) / 180 * Math.PI;
+  const brightness = model.brightness / 100;
+  screens.inner?.material.color.setScalar(brightness);
+  screens.outer?.material.color.setScalar(model.fold >= 180 ? 0 : brightness);
+  applyFov();
+  syncModelInputs();
+}
+function setModel(changes, record = true) {
+  Object.assign(model, changes);
+  applyModel();
+  if (record) writeThroughToKeyframe();
+}
+for (const input of modelInputs) {
+  const name = input.dataset.model;
+  const commit = () => {
+    const raw = Number(input.value);
+    if (!Number.isFinite(raw)) return;
+    const value = input.type === 'range'
+      ? Math.min(Number(input.max), Math.max(Number(input.min), raw))
+      : raw;
+    setModel({ [name]: value });
+  };
+  input.addEventListener('input', commit);
+  input.addEventListener('change', commit);
+}
+document.querySelector('#model-reset').addEventListener('click', () => setModel({ ...MODEL_DEFAULTS }));
+
+// Field of view dollies the camera so the device keeps its framing.
+let fitDistance = 40;
+let userZoom = 1;
+let framing = false;
+controls.addEventListener('change', () => {
+  if (!framing) userZoom = camera.position.distanceTo(controls.target) / fitDistance;
 });
-slider.addEventListener('input', () => {
-  transition = null;
-  setPlaying(false);
-  setAngle(Number(slider.value));
-});
-document.querySelectorAll('[data-fold]').forEach(button => button.addEventListener('click', () => {
-  setPlaying(false);
-  transition = { from: angle, to: Number(button.dataset.fold), elapsed: 0 };
+function applyFov() {
+  if (camera.fov === model.fov) return;
+  camera.fov = model.fov;
+  camera.updateProjectionMatrix();
+  frameCamera();
+}
+function frameCamera() {
+  const rect = viewport.getBoundingClientRect();
+  if (rect.width < 1 || rect.height < 1) return;
+  const half = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
+  const aspect = rect.width / rect.height;
+  fitDistance = Math.max(12.5 / (2 * half), 19 / (2 * half * aspect));
+  framing = true;
+  const direction = camera.position.clone().sub(controls.target).normalize();
+  camera.position.copy(controls.target).add(direction.multiplyScalar(fitDistance * userZoom));
+  camera.updateProjectionMatrix();
+  controls.update();
+  framing = false;
+}
+
+// Environment ---------------------------------------------------------------
+const ENVIRONMENTS = {
+  studio1: { intensity: 1.35, key: 2.6, rim: 2, hemi: 1.8, exposure: 1.18 },
+  studio2: { intensity: 1.05, key: 3.4, rim: 1.2, hemi: 1.2, exposure: 1.1 },
+  soft: { intensity: 1.85, key: 1.4, rim: 1.7, hemi: 2.4, exposure: 1.25 },
+  contrast: { intensity: .8, key: 4.4, rim: .5, hemi: .85, exposure: 1 },
+};
+const environmentSelect = document.querySelector('#environment');
+const environmentRotation = { x: 0, y: 90, z: 0 };
+function applyEnvironment() {
+  const preset = ENVIRONMENTS[environmentSelect.value] ?? ENVIRONMENTS.studio1;
+  scene.environmentIntensity = preset.intensity;
+  key.intensity = preset.key;
+  rim.intensity = preset.rim;
+  hemisphere.intensity = preset.hemi;
+  renderer.toneMappingExposure = preset.exposure;
+  scene.environmentRotation?.set(...['x', 'y', 'z']
+    .map(axis => THREE.MathUtils.degToRad(environmentRotation[axis])));
+}
+environmentSelect.addEventListener('change', applyEnvironment);
+document.querySelectorAll('[data-env]').forEach(input => input.addEventListener('input', () => {
+  const value = Number(input.value);
+  if (!Number.isFinite(value)) return;
+  environmentRotation[input.dataset.env] = value;
+  applyEnvironment();
 }));
-// Background: drawn into the canvas so it is part of any recording, and mirrored onto
-// the page so the backdrop is already in place before the first frame renders.
+
+// Background ----------------------------------------------------------------
 const backgroundCanvas = document.createElement('canvas');
 const backgroundTexture = new THREE.CanvasTexture(backgroundCanvas);
 backgroundTexture.colorSpace = THREE.SRGBColorSpace;
 scene.background = backgroundTexture;
-const backgroundInput = document.querySelector('#background-upload');
-const backgroundSlot = document.querySelector('[data-background-slot]');
 const backgroundColor = document.querySelector('#background-color');
+const topBackground = document.querySelector('#top-background');
+const topBackgroundHex = document.querySelector('#top-background-hex');
 const gradientFrom = document.querySelector('#gradient-from');
 const gradientTo = document.querySelector('#gradient-to');
 const gradientAngle = document.querySelector('#gradient-angle');
 let backgroundMode = 'color';
-let backgroundImage = null;
-let backgroundImageURL = null;
+let backdrop = null;
 
 function drawBackground() {
-  // No background at all: the canvas keeps its alpha so the frame can be composited.
   document.body.classList.toggle('transparent', backgroundMode === 'none');
   if (backgroundMode === 'none') {
     scene.background = null;
@@ -296,218 +450,446 @@ function drawBackground() {
   if (backgroundCanvas.width !== width || backgroundCanvas.height !== height) {
     backgroundCanvas.width = width;
     backgroundCanvas.height = height;
-    // The texture's storage is sized on first upload, so a resized canvas needs a fresh one.
+    // Texture storage is sized on first upload, so a resized canvas needs a fresh one.
     backgroundTexture.dispose();
   }
-  // Draw in viewport coordinates so a gradient or image is framed by the preview area.
   const context = backgroundCanvas.getContext('2d');
   context.setTransform(scale, 0, 0, scale, 0, 0);
-  const pageWidth = rect.width, pageHeight = rect.height;
   if (backgroundMode === 'gradient') {
     // Follow the CSS gradient line: 0deg points up and angles run clockwise.
     const radians = Number(gradientAngle.value) * Math.PI / 180;
     const x = Math.sin(radians), y = -Math.cos(radians);
-    const length = Math.abs(pageWidth * x) + Math.abs(pageHeight * y);
+    const length = Math.abs(rect.width * x) + Math.abs(rect.height * y);
     const gradient = context.createLinearGradient(
-      (pageWidth - x * length) / 2, (pageHeight - y * length) / 2,
-      (pageWidth + x * length) / 2, (pageHeight + y * length) / 2);
+      (rect.width - x * length) / 2, (rect.height - y * length) / 2,
+      (rect.width + x * length) / 2, (rect.height + y * length) / 2);
     gradient.addColorStop(0, gradientFrom.value);
     gradient.addColorStop(1, gradientTo.value);
     context.fillStyle = gradient;
   } else {
-    context.fillStyle = backgroundMode === 'image' && backgroundImage ? '#101418' : backgroundColor.value;
+    context.fillStyle = backgroundMode === 'image' && backdrop ? '#101418' : backgroundColor.value;
   }
-  context.fillRect(0, 0, pageWidth, pageHeight);
-  if (backgroundMode === 'image' && backgroundImage) {
-    const cover = Math.max(pageWidth / backgroundImage.width, pageHeight / backgroundImage.height);
-    const width = backgroundImage.width * cover, height = backgroundImage.height * cover;
-    context.drawImage(backgroundImage, (pageWidth - width) / 2, (pageHeight - height) / 2, width, height);
+  context.fillRect(0, 0, rect.width, rect.height);
+  if (backgroundMode === 'image' && backdrop) {
+    const source = backdrop.element;
+    const cover = Math.max(rect.width / source.naturalWidth, rect.height / source.naturalHeight);
+    const width2 = source.naturalWidth * cover, height2 = source.naturalHeight * cover;
+    context.drawImage(source, (rect.width - width2) / 2, (rect.height - height2) / 2, width2, height2);
   }
   backgroundTexture.needsUpdate = true;
 }
-function setBackgroundImage(source) {
-  if (backgroundImageURL) URL.revokeObjectURL(backgroundImageURL);
-  backgroundImage = source?.image ?? null;
-  backgroundImageURL = source?.url ?? null;
-  syncSlot(backgroundSlot, backgroundImageURL);
+function setBackdrop(entry) {
+  if (backdrop) URL.revokeObjectURL(backdrop.url);
+  backdrop = entry;
+  const panel = document.querySelector('[data-loaded="backdrop"]');
+  panel.hidden = !entry;
+  if (entry) {
+    panel.querySelector('.loaded-name').textContent = entry.name;
+    panel.querySelector('.loaded-preview').style.backgroundImage = `url("${entry.url}")`;
+  }
   drawBackground();
+}
+backdropInput.addEventListener('change', async () => {
+  const file = backdropInput.files[0];
+  backdropInput.value = '';
+  if (!file) return;
+  const entry = await readMedia(file);
+  if (entry?.kind === 'image') setBackdrop(entry);
+  else if (entry) say('The backdrop takes an image.');
+});
+function setBackgroundMode(mode) {
+  backgroundMode = mode;
+  document.querySelectorAll('[data-background-mode]').forEach(tab =>
+    tab.setAttribute('aria-selected', String(tab.dataset.backgroundMode === mode)));
+  document.querySelectorAll('[data-background-fields]').forEach(fields =>
+    fields.hidden = fields.dataset.backgroundFields !== mode);
+  document.querySelector('#export-transparent').checked = mode === 'none';
+  drawBackground();
+  updateExportLabels();
 }
 document.querySelectorAll('[data-background-mode]').forEach(button => button.addEventListener('click', () => {
-  backgroundMode = button.dataset.backgroundMode;
-  document.querySelectorAll('[data-background-mode]').forEach(tab =>
-    tab.setAttribute('aria-selected', String(tab.dataset.backgroundMode === backgroundMode)));
-  document.querySelectorAll('[data-background-fields]').forEach(fields =>
-    fields.hidden = fields.dataset.backgroundFields !== backgroundMode);
-  drawBackground();
-  updateRecordLabel();
-  if (backgroundMode === 'image' && !backgroundImage) backgroundInput.click();
+  setBackgroundMode(button.dataset.backgroundMode);
+  if (backgroundMode === 'image' && !backdrop) backdropInput.click();
 }));
-document.querySelectorAll('[data-background-color]').forEach(button => button.addEventListener('click', () => {
-  backgroundColor.value = button.dataset.backgroundColor;
-  syncSwatches();
-  drawBackground();
-}));
-function syncSwatches() {
+function syncColour(value) {
+  backgroundColor.value = value;
+  topBackground.value = value;
+  topBackgroundHex.textContent = value.toUpperCase();
   document.querySelectorAll('[data-background-color]').forEach(button => button.setAttribute('aria-pressed',
-    String(button.dataset.backgroundColor.toLowerCase() === backgroundColor.value.toLowerCase())));
-}
-backgroundColor.addEventListener('input', () => {
-  syncSwatches();
+    String(button.dataset.backgroundColor.toLowerCase() === value.toLowerCase())));
   drawBackground();
+}
+document.querySelectorAll('[data-background-color]').forEach(button =>
+  button.addEventListener('click', () => syncColour(button.dataset.backgroundColor)));
+backgroundColor.addEventListener('input', () => syncColour(backgroundColor.value));
+topBackground.addEventListener('input', () => {
+  if (backgroundMode !== 'color') setBackgroundMode('color');
+  syncColour(topBackground.value);
 });
 [gradientFrom, gradientTo].forEach(input => input.addEventListener('input', drawBackground));
 gradientAngle.addEventListener('input', () => {
-  gradientAngle.style.setProperty('--progress', `${gradientAngle.value / 3.6}%`);
+  const meter = gradientAngle.closest('.meter');
+  meter.style.setProperty('--fill', `${gradientAngle.value / 3.6}%`);
+  meter.querySelector('.meter-value').textContent = `${gradientAngle.value}°`;
   drawBackground();
 });
-gradientAngle.style.setProperty('--progress', `${gradientAngle.value / 3.6}%`);
-backgroundSlot.querySelector('.slot-pick').addEventListener('click', () => backgroundInput.click());
-backgroundSlot.querySelector('.slot-clear').addEventListener('click', () => setBackgroundImage(null));
-backgroundInput.addEventListener('change', async () => {
-  const file = backgroundInput.files[0];
-  backgroundInput.value = '';
-  if (file) setBackgroundImage(await readImage(file));
-});
-syncSwatches();
 
-// Frame: the preview area doubles as the export area, so its shape is a control.
-const stage = document.querySelector('.stage');
+// Artboard shape ------------------------------------------------------------
 const frameBox = document.querySelector('.frame');
 const frameSizeNote = document.querySelector('#frame-size');
-const deviceScale = document.querySelector('#device-scale');
-const deviceInputs = ['device-scale', 'rotate-x', 'rotate-y', 'rotate-z'].map(id => document.querySelector(`#${id}`));
-let frameAspect = null;
-
-function reportFrameSize() {
+const aspectSelect = document.querySelector('#aspect');
+let frameAspect = 1;
+function exportPixels() {
   const rect = viewport.getBoundingClientRect();
   const pixels = Math.min(devicePixelRatio, 2);
-  frameSizeNote.textContent = `${Math.round(rect.width * pixels)} × ${Math.round(rect.height * pixels)} px export`;
+  return { width: Math.round(rect.width * pixels), height: Math.round(rect.height * pixels) };
+}
+function reportFrameSize() {
+  const { width, height } = exportPixels();
+  frameSizeNote.textContent = `Artboard exports at ${width} × ${height} px`;
+  updateExportLabels();
 }
 function applyFrame() {
-  stage.classList.toggle('framed', Boolean(frameAspect));
+  const box = frameBox.getBoundingClientRect();
+  if (box.width < 1 || box.height < 1) return;
   if (!frameAspect) {
     viewport.style.width = '';
     viewport.style.height = '';
   } else {
-    // Measured after the class lands, so the inset frame reports its own box.
-    const box = frameBox.getBoundingClientRect();
     const width = Math.min(box.width, box.height * frameAspect);
     viewport.style.width = `${Math.round(width)}px`;
     viewport.style.height = `${Math.round(width / frameAspect)}px`;
   }
   reportFrameSize();
 }
-function applyDevice() {
-  phone.scale.setScalar(Number(deviceScale.value) / 100);
-  phone.rotation.set(...['rotate-x', 'rotate-y', 'rotate-z']
-    .map(id => THREE.MathUtils.degToRad(Number(document.querySelector(`#${id}`).value))));
-  for (const input of deviceInputs) {
-    input.style.setProperty('--progress', `${(input.value - input.min) / (input.max - input.min) * 100}%`);
-    document.querySelector(`#${input.id}-value`).textContent =
-      input === deviceScale ? `${input.value}%` : `${input.value}°`;
+aspectSelect.addEventListener('change', () => {
+  const value = aspectSelect.value;
+  if (value === 'fit') frameAspect = null;
+  else {
+    const [w, h] = value.split(':').map(Number);
+    frameAspect = w / h;
   }
-}
-document.querySelectorAll('[data-aspect]').forEach(button => button.addEventListener('click', () => {
-  const [width, height] = button.dataset.aspect.split(':').map(Number);
-  frameAspect = button.dataset.aspect === 'fit' ? null : width / height;
-  document.querySelectorAll('[data-aspect]').forEach(tab => tab.setAttribute('aria-selected', String(tab === button)));
   applyFrame();
-}));
-deviceInputs.forEach(input => input.addEventListener('input', applyDevice));
-document.querySelector('#device-reset').addEventListener('click', () => {
-  deviceInputs.forEach(input => { input.value = input === deviceScale ? 100 : 0; });
-  applyDevice();
 });
 new ResizeObserver(applyFrame).observe(frameBox);
-applyDevice();
-
-// Recording: capture the canvas through one full fold cycle and hand back a file.
-const FOLD_CYCLE = 8.6;
-const recordButton = document.querySelector('#record');
-const recordLabel = document.querySelector('#record-label');
-// H.264 in MP4 plays everywhere but carries no alpha channel, so a transparent
-// background records as WebM instead, which does.
-const MP4_TYPES = ['video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1.4D401E',
-  'video/mp4;codecs=avc1', 'video/mp4;codecs=h264', 'video/mp4'];
-const ALPHA_TYPES = ['video/webm;codecs=vp8', 'video/webm;codecs=vp9', 'video/webm'];
-function pickRecordType() {
-  if (!window.MediaRecorder) return undefined;
-  const types = backgroundMode === 'none' ? ALPHA_TYPES : [...MP4_TYPES, ...ALPHA_TYPES];
-  return types.find(type => MediaRecorder.isTypeSupported(type));
-}
-function updateRecordLabel() {
-  if (recorder) return;
-  const type = pickRecordType();
-  recordLabel.textContent = type?.startsWith('video/mp4') ? 'Record MP4' : 'Record WebM';
-}
-const canRecord = Boolean(pickRecordType() && renderer.domElement.captureStream);
-let recorder = null;
-let recordElapsed = 0;
-
-function setRecording(value) {
-  recordButton.classList.toggle('recording', value);
-  if (value) recordLabel.textContent = 'Stop and save';
-  else updateRecordLabel();
-  const label = value ? 'Stop recording and download' : 'Record the fold animation';
-  recordButton.setAttribute('aria-label', label);
-  recordButton.title = label;
-  // Hold the rest of the controls still until the recording is finished.
-  document.querySelectorAll('button, input').forEach(element => {
-    if (element !== recordButton) element.disabled = value;
-  });
-}
-function startRecording() {
-  const recordType = pickRecordType();
-  if (!recordType || !renderer.domElement.captureStream) return;
-  const stream = renderer.domElement.captureStream(60);
-  const chunks = [];
-  recorder = new MediaRecorder(stream, { mimeType: recordType, videoBitsPerSecond: 16000000 });
-  recorder.addEventListener('dataavailable', event => {
-    if (event.data.size) chunks.push(event.data);
-  });
-  recorder.addEventListener('stop', () => {
-    stream.getTracks().forEach(track => track.stop());
-    recorder = null;
-    setRecording(false);
-    setPlaying(false);
-    download(new Blob(chunks, { type: recordType }),
-      `duofied-fold.${recordType.startsWith('video/mp4') ? 'mp4' : 'webm'}`);
-  });
-  transition = null;
-  recordElapsed = 0;
-  phase = 0;
-  setAngle(180);
-  setPlaying(true);
-  setRecording(true);
-  recordButton.style.setProperty('--record-progress', '0%');
-  recorder.start();
-}
-recordButton.addEventListener('click', () => (recorder ? recorder.stop() : startRecording()));
-
-function download(blob, name) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = name;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 30000);
-}
-// A PNG keeps the alpha channel, so it is how a transparent frame leaves the page.
-let snapshotPending = false;
-document.querySelector('#snapshot').addEventListener('click', () => { snapshotPending = true; });
 
 function resize() {
   const { width, height } = viewport.getBoundingClientRect();
+  if (width < 1 || height < 1) return;
   renderer.setSize(width, height);
   camera.aspect = width / height;
-  const pixelsPerUnit = Math.min(width / 25, height / 17, 37);
-  camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(height / pixelsPerUnit / 2 / 40));
-  camera.updateProjectionMatrix();
+  frameCamera();
   drawBackground();
   reportFrameSize();
 }
 new ResizeObserver(resize).observe(viewport);
 
+// Timeline ------------------------------------------------------------------
+const EASINGS = {
+  easeInOut: p => (p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2),
+  linear: p => p,
+  easeIn: p => p * p * p,
+  easeOut: p => 1 - Math.pow(1 - p, 3),
+  overshoot: p => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2); },
+  hold: () => 0,
+};
+const ANIMATED = Object.keys(MODEL_DEFAULTS);
+const track = document.querySelector('#track');
+const ruler = document.querySelector('#ruler');
+const keysLayer = document.querySelector('#keys');
+const playheadEl = document.querySelector('#playhead');
+const durationInput = document.querySelector('#duration');
+const keyframeToggle = document.querySelector('#keyframe-toggle');
+const keyframeLabel = document.querySelector('#keyframe-label');
+const playButton = document.querySelector('#play');
+
+let duration = 4;
+let playhead = 0;
+let timelinePlaying = false;
+let selectedKey = 0;
+let keyframes = [
+  { time: 0, easing: 'easeInOut', state: { ...MODEL_DEFAULTS } },
+  { time: 2, easing: 'easeInOut', state: { ...MODEL_DEFAULTS, fold: 0, rotationY: -20 } },
+  { time: 4, easing: 'easeInOut', state: { ...MODEL_DEFAULTS } },
+];
+
+function sortKeys() {
+  const selected = keyframes[selectedKey];
+  keyframes.sort((a, b) => a.time - b.time);
+  selectedKey = Math.max(0, keyframes.indexOf(selected));
+}
+function sampleAt(time) {
+  if (!keyframes.length) return { ...model };
+  if (time <= keyframes[0].time) return { ...keyframes[0].state };
+  const last = keyframes[keyframes.length - 1];
+  if (time >= last.time) return { ...last.state };
+  let index = 0;
+  while (index < keyframes.length - 1 && keyframes[index + 1].time <= time) index++;
+  const from = keyframes[index], to = keyframes[index + 1];
+  const span = to.time - from.time;
+  const progress = span > 0 ? (time - from.time) / span : 1;
+  const eased = (EASINGS[from.easing] ?? EASINGS.easeInOut)(progress);
+  const state = {};
+  for (const name of ANIMATED) state[name] = from.state[name] + (to.state[name] - from.state[name]) * eased;
+  return state;
+}
+function keyIndexAt(time) {
+  const tolerance = Math.max(.02, duration * .005);
+  return keyframes.findIndex(frame => Math.abs(frame.time - time) <= tolerance);
+}
+// Editing a control while the playhead sits on a keyframe updates that keyframe.
+function writeThroughToKeyframe() {
+  if (timelinePlaying || recorder) return;
+  const index = keyIndexAt(playhead);
+  if (index < 0) return;
+  for (const name of ANIMATED) keyframes[index].state[name] = model[name];
+}
+function setPlayhead(time, apply = true) {
+  playhead = Math.min(duration, Math.max(0, time));
+  playheadEl.style.left = `${playhead / duration * 100}%`;
+  if (apply) setModel(sampleAt(playhead), false);
+  const index = keyIndexAt(playhead);
+  keyframeLabel.textContent = index < 0 ? 'Add keyframe' : 'Remove keyframe';
+  keyframeToggle.dataset.mode = index < 0 ? 'add' : 'remove';
+  if (index >= 0) selectedKey = index;
+  renderKeys();
+}
+function renderRuler() {
+  ruler.replaceChildren();
+  const step = duration <= 6 ? .5 : duration <= 12 ? 1 : 2;
+  for (let time = 0; time <= duration + 1e-6; time += step) {
+    const tick = document.createElement('span');
+    const major = Math.abs(time - Math.round(time)) < 1e-6;
+    tick.className = major ? 'tick' : 'tick minor';
+    tick.style.left = `${time / duration * 100}%`;
+    tick.textContent = major ? `${Math.round(time)}s` : '';
+    ruler.append(tick);
+  }
+}
+function renderKeys() {
+  keysLayer.replaceChildren();
+  keyframes.forEach((frame, index) => {
+    const dot = document.createElement('button');
+    dot.type = 'button';
+    dot.className = index === selectedKey ? 'key selected' : 'key';
+    dot.style.left = `${frame.time / duration * 100}%`;
+    dot.dataset.key = index;
+    dot.title = `${frame.time.toFixed(2)}s · ${frame.easing}`;
+    dot.setAttribute('aria-label', `Keyframe at ${frame.time.toFixed(2)} seconds`);
+    keysLayer.append(dot);
+  });
+}
+function renderTimeline() {
+  renderRuler();
+  setPlayhead(playhead, false);
+}
+function setTimelinePlaying(value) {
+  timelinePlaying = value;
+  document.querySelector('#pause-icon').toggleAttribute('hidden', !value);
+  document.querySelector('#play-icon').toggleAttribute('hidden', value);
+  playButton.querySelector('span').textContent = value ? 'Pause' : 'Play';
+  playButton.setAttribute('aria-label', value ? 'Pause animation' : 'Play animation');
+}
+playButton.addEventListener('click', () => setTimelinePlaying(!timelinePlaying));
+durationInput.addEventListener('change', () => {
+  const value = Math.min(30, Math.max(1, Math.round(Number(durationInput.value) || 4)));
+  durationInput.value = value;
+  duration = value;
+  keyframes.forEach(frame => { frame.time = Math.min(frame.time, duration); });
+  sortKeys();
+  setPlayhead(Math.min(playhead, duration));
+  renderTimeline();
+  updateExportLabels();
+});
+keyframeToggle.addEventListener('click', () => {
+  const index = keyIndexAt(playhead);
+  if (index < 0) {
+    keyframes.push({ time: playhead, easing: keyframes[selectedKey]?.easing ?? 'easeInOut', state: { ...model } });
+    sortKeys();
+    selectedKey = keyIndexAt(playhead);
+    say('Keyframe added');
+  } else if (keyframes.length > 1) {
+    keyframes.splice(index, 1);
+    selectedKey = Math.min(selectedKey, keyframes.length - 1);
+    say('Keyframe removed');
+  } else {
+    say('Keep at least one keyframe');
+  }
+  setPlayhead(playhead, false);
+});
+
+// Scrubbing, and dragging a keyframe to retime it.
+let dragKey = -1;
+function timeFromEvent(event) {
+  const box = track.getBoundingClientRect();
+  return Math.min(duration, Math.max(0, (event.clientX - box.left) / box.width * duration));
+}
+track.addEventListener('pointerdown', event => {
+  if (!ready) return;
+  track.setPointerCapture(event.pointerId);
+  const dot = event.target.closest('.key');
+  if (dot) {
+    dragKey = Number(dot.dataset.key);
+    selectedKey = dragKey;
+    setTimelinePlaying(false);
+    setPlayhead(keyframes[dragKey].time);
+    return;
+  }
+  setTimelinePlaying(false);
+  setPlayhead(timeFromEvent(event));
+});
+track.addEventListener('pointermove', event => {
+  if (!track.hasPointerCapture?.(event.pointerId)) return;
+  const time = timeFromEvent(event);
+  if (dragKey >= 0) {
+    keyframes[dragKey].time = time;
+    const moved = keyframes[dragKey];
+    sortKeys();
+    dragKey = keyframes.indexOf(moved);
+    selectedKey = dragKey;
+    renderKeys();
+    playhead = time;
+    playheadEl.style.left = `${playhead / duration * 100}%`;
+  } else {
+    setPlayhead(time);
+  }
+});
+track.addEventListener('pointerup', event => {
+  track.releasePointerCapture?.(event.pointerId);
+  if (dragKey >= 0) {
+    dragKey = -1;
+    setPlayhead(playhead);
+  }
+});
+
+// Menus ---------------------------------------------------------------------
+const exportMenu = document.querySelector('#export-menu');
+const easingMenu = document.querySelector('#easing-menu');
+const exportOpen = document.querySelector('#export-open');
+function placeMenu(menu, anchor, align = 'end') {
+  menu.hidden = false;
+  const box = anchor.getBoundingClientRect();
+  const size = menu.getBoundingClientRect();
+  const left = align === 'end' ? box.right - size.width : box.left;
+  menu.style.left = `${Math.max(8, Math.min(innerWidth - size.width - 8, left))}px`;
+  const below = box.bottom + 8;
+  menu.style.top = below + size.height < innerHeight - 8
+    ? `${below}px`
+    : `${Math.max(8, box.top - size.height - 8)}px`;
+}
+function closeMenus() {
+  exportMenu.hidden = true;
+  easingMenu.hidden = true;
+}
+document.addEventListener('pointerdown', event => {
+  if (!event.target.closest('.menu') && !event.target.closest('#export-open') && !event.target.closest('#easing-open')) closeMenus();
+});
+exportOpen.addEventListener('click', () => {
+  if (recorder) { recorder.stop(); return; }
+  const open = exportMenu.hidden;
+  closeMenus();
+  if (open) {
+    updateExportLabels();
+    placeMenu(exportMenu, exportOpen);
+  }
+});
+document.querySelector('#easing-open').addEventListener('click', () => {
+  const open = easingMenu.hidden;
+  closeMenus();
+  if (open) {
+    const easing = keyframes[selectedKey]?.easing ?? 'easeInOut';
+    easingMenu.querySelectorAll('[data-easing]').forEach(item =>
+      item.setAttribute('aria-checked', String(item.dataset.easing === easing)));
+    placeMenu(easingMenu, document.querySelector('#easing-open'));
+  }
+});
+easingMenu.querySelectorAll('[data-easing]').forEach(item => item.addEventListener('click', () => {
+  if (keyframes[selectedKey]) {
+    keyframes[selectedKey].easing = item.dataset.easing;
+    say(`${item.textContent} applied`);
+    renderKeys();
+  }
+  closeMenus();
+}));
+
+// Export --------------------------------------------------------------------
+const MP4_TYPES = ['video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1.4D401E',
+  'video/mp4;codecs=avc1', 'video/mp4;codecs=h264', 'video/mp4'];
+const ALPHA_TYPES = ['video/webm;codecs=vp8', 'video/webm;codecs=vp9', 'video/webm'];
+function pickRecordType() {
+  if (!window.MediaRecorder) return undefined;
+  // MP4 has no alpha channel, so a transparent artboard records as WebM instead.
+  const types = backgroundMode === 'none' ? ALPHA_TYPES : [...MP4_TYPES, ...ALPHA_TYPES];
+  return types.find(type => MediaRecorder.isTypeSupported(type));
+}
+function updateExportLabels() {
+  const { width, height } = exportPixels();
+  document.querySelector('#export-size').textContent = `${width} × ${height}`;
+  document.querySelector('#export-duration').textContent = `${duration}s`;
+  const type = pickRecordType();
+  document.querySelector('#export-video-label').textContent =
+    !type ? 'Video (unsupported)' : type.startsWith('video/mp4') ? 'Video · MP4' : 'Video · WebM';
+}
+let recorder = null;
+let recordElapsed = 0;
+let snapshotPending = false;
+let previousBackgroundMode = 'color';
+
+document.querySelector('#export-transparent').addEventListener('change', event => {
+  if (event.target.checked) {
+    previousBackgroundMode = backgroundMode === 'none' ? 'color' : backgroundMode;
+    setBackgroundMode('none');
+  } else if (backgroundMode === 'none') {
+    setBackgroundMode(previousBackgroundMode);
+  }
+});
+document.querySelectorAll('[data-export]').forEach(item => item.addEventListener('click', () => {
+  closeMenus();
+  if (item.dataset.export === 'png') snapshotPending = true;
+  else startRecording();
+}));
+
+function fileStem() {
+  const name = document.querySelector('#project-name').value.trim() || 'duofied';
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'duofied';
+}
+function setRecording(value) {
+  exportOpen.classList.toggle('recording', value);
+  document.querySelector('#export-label').textContent = value ? 'Stop' : 'Export';
+  document.querySelectorAll('button, input, select').forEach(element => {
+    if (element !== exportOpen) element.disabled = value;
+  });
+}
+function startRecording() {
+  const type = pickRecordType();
+  if (!type || !renderer.domElement.captureStream) {
+    say('This browser cannot record video.');
+    return;
+  }
+  const stream = renderer.domElement.captureStream(60);
+  const chunks = [];
+  recorder = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 16000000 });
+  recorder.addEventListener('dataavailable', event => { if (event.data.size) chunks.push(event.data); });
+  recorder.addEventListener('stop', () => {
+    stream.getTracks().forEach(t => t.stop());
+    recorder = null;
+    setRecording(false);
+    setTimelinePlaying(false);
+    download(new Blob(chunks, { type }), `${fileStem()}.${type.startsWith('video/mp4') ? 'mp4' : 'webm'}`);
+    say('Video saved');
+  });
+  recordElapsed = 0;
+  setPlayhead(0);
+  setTimelinePlaying(true);
+  setRecording(true);
+  recorder.start();
+  say('Recording the timeline…');
+}
+
+function enableUI() {
+  document.querySelectorAll('button, input, select').forEach(element => { element.disabled = false; });
+  if (!pickRecordType()) say('Video recording is unavailable in this browser; PNG export still works.');
+}
 const screenShader = `
 uniform float foldAngle;
 uniform vec2 uiPixel;
@@ -661,47 +1043,50 @@ try {
   });
   console.info('Official model ready', JSON.stringify({ ...count, sourceMeshes: phone.children.length, innerUI: true, outerUI: true, fixedHalf: 'rear camera' }));
   applyScreens();
-  document.querySelectorAll('button, input').forEach(element => element.disabled = false);
-  if (!canRecord) {
-    recordButton.disabled = true;
-    recordButton.title = 'This browser cannot record video';
-  }
   applyFrame();
   ready = true;
-  setAngle(180);
+  enableUI();
+  setPlayhead(0);
 } catch (error) {
   alert('Unable to load the model. Refresh the page to try again.');
   console.error(error);
 }
+
+// Startup -------------------------------------------------------------------
+syncColour(backgroundColor.value);
+applyEnvironment();
+applyScreens();
+drawScreen('inner');
+drawScreen('outer');
+renderTimeline();
+updateExportLabels();
+
 let lastTime = performance.now();
 renderer.setAnimationLoop(now => {
   const delta = Math.min((now - lastTime) / 1000, .05);
   lastTime = now;
-  if (ready && playing) {
-    phase = (phase + delta) % 8.6;
-    let value;
-    if (phase < 1.2) value = 180;
-    else if (phase < 4.3) value = 90 * (1 + Math.cos((phase - 1.2) / 3.1 * Math.PI));
-    else if (phase < 5.5) value = 0;
-    else value = 90 * (1 - Math.cos((phase - 5.5) / 3.1 * Math.PI));
-    setAngle(value);
-  } else if (transition) {
-    transition.elapsed += delta;
-    const progress = Math.min(transition.elapsed / 1.4, 1);
-    const ease = progress * progress * (3 - 2 * progress);
-    setAngle(THREE.MathUtils.lerp(transition.from, transition.to, ease));
-    if (progress === 1) transition = null;
+  if (ready && timelinePlaying) {
+    let next = playhead + delta;
+    if (next >= duration) next = recorder ? duration : next % duration;
+    setPlayhead(next);
+  }
+  // A screen playing video needs its canvas redrawn every frame.
+  for (const kind of ['inner', 'outer']) {
+    if (media[kind]?.kind === 'video' && media[kind].element.readyState >= 2) drawScreen(kind);
   }
   if (recorder) {
     recordElapsed += delta;
-    recordButton.style.setProperty('--record-progress', `${Math.min(recordElapsed / FOLD_CYCLE, 1) * 100}%`);
-    if (recordElapsed >= FOLD_CYCLE) recorder.stop();
+    if (recordElapsed >= duration) recorder.stop();
   }
   controls.update();
   renderer.render(scene, camera);
   if (snapshotPending) {
     // Taken here, while the drawing buffer still holds the frame just rendered.
     snapshotPending = false;
-    renderer.domElement.toBlob(blob => blob && download(blob, 'duofied-frame.png'), 'image/png');
+    renderer.domElement.toBlob(blob => {
+      if (!blob) return;
+      download(blob, `${fileStem()}.png`);
+      say('PNG saved');
+    }, 'image/png');
   }
 });

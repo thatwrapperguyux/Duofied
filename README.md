@@ -1,4 +1,4 @@
-# iPhone Duo · Fold Preview
+# Duofied · Fold Studio
 
 A browser-based study of foldable screen transitions, built with Three.js.
 
@@ -6,15 +6,16 @@ A browser-based study of foldable screen transitions, built with Three.js.
 
 ## Features
 
+- A floating studio interface: inspector, top bar and timeline hover over a full-bleed artboard.
+- Each screen takes an image **or a video**, placed with its own width, height and offset.
+- Model settings: position and rotation on every axis, field of view, size, screen brightness and fold.
+- Environment presets with their own rotation, and an artboard that can be a colour, gradient, image, or nothing at all.
+- A keyframe timeline with per-keyframe easing — ease in/out, linear, overshoot, hold — driving every model value.
+- Export the artboard as a PNG still or as a video of the timeline, on a transparent background if you want one.
 - Only the cover half rotates; the rear-camera half stays fixed.
 - Screen content uses a fixed front-view projection during folding. The outer UI stays aligned with its hinge-side left edge.
 - Blur and darkening follow the image coordinates, including the image edges. Maximum blur radius is 72 source pixels; darkening uses twice the transition strength, capped at black.
-- Wallpaper, Launcher, and Custom modes. Custom keeps one image per screen: Screen 1 for the closed cover and Screen 2 for the open display. A screen left without an image keeps the selected default layout.
-- Background colour, gradient, image, or none at all, drawn into the canvas so exports carry it.
-- Position the device freely: size plus rotation on each axis. Frame the preview to a shape; the frame is what gets exported.
-- Record one full fold cycle as MP4, or save the current frame as a PNG.
-- Drag to orbit, scroll to zoom, or use the play button and slider to fold the device.
-- Controls live in a left sidebar beside a full-bleed preview; on narrow screens the sidebar becomes a sheet below it. Uploaded images stay in the current browser tab.
+- Drag to orbit, scroll to zoom. Uploaded media stays in the current browser tab.
 
 ## Run locally
 
@@ -40,91 +41,97 @@ The preparation script downloads the original Star White USDZ and UI images from
 
 ## Interface
 
-The window is split between a control sidebar and the preview. The sidebar groups the
-controls in the order they are usually reached — Screens, Background, Fold — with the
-recording action pinned to the bottom. Below 900px wide the sidebar moves under the
-preview as a scrollable sheet, and the fold controls rise to the top of it.
+The window is a workspace with three floating shells over it: the top bar carries the project
+name, the artboard shape and colour, and Export; the inspector sits on the left; the timeline
+runs along the bottom. The artboard is centred between them and is the only thing exported.
 
 Type is [Inter](https://fonts.google.com/specimen/Inter), loaded from Google Fonts, over a
-system sans fallback. The page is the only thing that reaches the network at runtime; drop
-the stylesheet link in `index.html` if the deployment must stay self-contained.
+system sans fallback. Drop the stylesheet link in `index.html` if the deployment must stay
+self-contained.
 
-## Screen controls
+## Screens
 
-Choose **Wallpaper** or **Launcher** for the default screen layouts. Choose **Custom** to use your own images.
+**Wallpaper** and **Launcher** are the built-in layouts. **Media** gives each screen its own
+section — *First screen* is the cover seen while the device is closed, *Second screen* is the
+inner display. Drop a file on a section or use its button; a screen left empty keeps the
+layout chosen under Wallpaper or Launcher.
 
-Custom has one section per screen:
+| Accepts | |
+| --- | --- |
+| Images | PNG, JPG, WebP |
+| Video | MP4, WebM, Ogg — looped and muted, and recorded live into exports |
 
-| Section | Screen | Recommended image size |
-| --- | --- | --- |
-| Screen 1 · Closed | The cover display, seen while the device is folded | 1292 × 1878 |
-| Screen 2 · Open | The inner display, seen while the device is open | 2670 × 1878 |
-
-Each section takes its own image, shows a thumbnail once one is set, and clears it with the × button. Adding an image folds the device towards that screen so the result is visible right away. A section left empty keeps the layout chosen under Wallpaper or Launcher.
-
-Once a screen has an image, four fields appear under it, all in percent:
+Each loaded screen gets four placement fields, in percent, with a slider and a typed value:
 
 | Field | Effect |
 | --- | --- |
-| W | Width. 100% fits the image to the screen; above that it crops, below it insets |
-| H | Height, scaled independently of W, so the image can be stretched freely |
-| X | Shifts the image across the screen, as a share of the screen width |
+| W | Width. 100% fits the media to the screen; above crops, below insets |
+| H | Height, scaled independently of W, so media can be stretched |
+| X | Shifts it across the screen, as a share of the screen width |
 | Y | Shifts it up or down, as a share of the screen height |
 
-Each one has a slider for dragging and a box for typing an exact value; the two stay in
-step, and a typed value out of range is clamped when it is committed. The two screens are
-adjusted separately, and **Reset** returns one screen to a plain fitted image.
+## Model settings
 
-The slider controls the fold from closed to open. The default view is fully open and paused. The outer screen turns off at full opening.
+Position and rotation each take X, Y and Z. Position is in tenths of a scene unit, so the
+values stay small; rotation is in degrees and turns the device itself, which is independent of
+dragging the artboard to orbit the camera.
 
-## Background
+**Field of view** changes the lens from 10° to 80° and dollies the camera to keep the device
+framed, so perspective changes without the subject resizing. **Model size** scales it from 20%
+to 300%, **Screen brightness** dims or lifts both displays, and **Fold** runs from closed to
+open. Every one of these can be keyframed.
+
+## Environment
+
+Four lighting presets, each with its own ambient intensity, key and rim strength and exposure.
+The X/Y/Z fields rotate the environment map, which moves the reflections across the device.
+
+## Artboard
 
 | Option | Controls |
 | --- | --- |
-| Color | Six preset swatches and a colour picker |
-| Gradient | Two colour stops and an angle, following the CSS `linear-gradient` convention where 0° points up |
-| Image | One image, centred and scaled to cover the frame |
-| None | No background; the canvas keeps its alpha channel and the preview shows a checkerboard |
+| Color | Six preset swatches and a colour picker, mirrored by the top bar swatch |
+| Gradient | Two colour stops and an angle, following the CSS `linear-gradient` convention |
+| Image | One image, centred and scaled to cover the artboard |
+| None | No background; the canvas keeps its alpha and the artboard shows a checkerboard |
 
-Every option except None is drawn into the WebGL canvas, so whatever is exported carries
-the background with it. **None** leaves the canvas transparent for compositing, which
-changes what the export formats can hold — see below.
+The shape dropdown in the top bar sets the artboard to fit the window, or to 1:1, 16:9, 9:16
+or 4:3. The note under the artboard controls reports the pixel size exports come out at.
 
-## Frame
+## Timeline
 
-The preview area is the export area, so its shape is a control. **Fit** fills the window;
-**16:9**, **1:1**, and **9:16** inset a frame of that ratio and centre it. The note under
-the controls reports the pixel size a recording or PNG will come out at.
+The timeline holds keyframes of every model value. Three are there to begin with — open,
+closed, open — over four seconds.
 
-## Device
+- Click the track to scrub; drag a keyframe to retime it.
+- **Add keyframe** captures the current model settings at the playhead. On a keyframe the same
+  button removes it instead.
+- Adjusting any model control while the playhead sits on a keyframe updates that keyframe.
+- The curve button sets the selected keyframe's easing: ease in out, linear, ease in, ease out,
+  overshoot or hold. Easing governs the segment that leaves that keyframe.
+- The seconds field sets the length, from 1 to 30 seconds.
 
-**Size** scales the device in the frame from 20% to 300%. **X**, **Y**, and **Z** rotate it
-around each axis from -180° to 180°, which is independent of dragging the preview: the
-sliders turn the device, dragging orbits the camera around it. **Reset** returns all four to
-their defaults.
+## Export
 
-## Recording
-
-The record button beside the fold slider captures one full cycle — open, closed, open — and downloads the result. Recording starts from fully open and covers 8.6 seconds of animation; the button fills to show progress, and clicking it again stops early and saves what was captured. The other controls stay locked until it finishes. Only the 3D canvas is recorded, never the control dock.
-
-**PNG** beside it saves the frame on screen as a still, at the frame's pixel size.
+**PNG image** saves the artboard as a still at its reported pixel size. **Video** plays the
+timeline once from the start and records it, so the file is exactly as long as the timeline.
+The file is named after the project.
 
 The video is H.264 in an MP4 container wherever the browser can encode it, which covers
-current Chrome, Edge, and Safari. Browsers without an H.264 encoder fall back through the
-remaining supported formats to WebM, and the file extension follows whatever was recorded.
+current Chrome, Edge and Safari; browsers without an H.264 encoder fall back to WebM.
 
-MP4 has no alpha channel. With the background set to **None** the button therefore records
-WebM, which does carry alpha, and says so. For a transparent still, PNG keeps the alpha
-channel in every browser.
+MP4 has no alpha channel, so with the artboard set to **None** — or the menu's **Transparent
+background** ticked — the recorder writes WebM, which does carry alpha, and the menu says so.
+PNG keeps the alpha channel in every browser.
 
 ## Source map
 
 | File | Purpose |
 | --- | --- |
-| `index.html` | Screen-mode tabs, background controls, and fold controls |
-| `main.js` | Three.js scene, fold deformation, projected UI, blur, darkening, background, and recording |
+| `index.html` | Floating shells: top bar, inspector and timeline |
+| `main.js` | Three.js scene, fold deformation, projected UI, media, timeline and export |
 | `ui.js` | Default screen layouts |
-| `style.css` | Design tokens, sidebar, controls, and responsive layout |
+| `style.css` | Design tokens, floating shells, controls and responsive layout |
 | `scripts/prepare-assets.py` | Download and prepare the reference assets |
 | `vercel.json` | Install and prepare assets during Vercel builds |
 | `vendor/three/` | Three.js runtime and required add-ons |
