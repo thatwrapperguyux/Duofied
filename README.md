@@ -12,6 +12,7 @@ A browser-based study of foldable screen transitions, built with Three.js.
 - Environment presets with their own rotation, and an artboard that can be a colour, gradient, image, or nothing at all.
 - A keyframe timeline with per-keyframe easing — ease in/out, linear, overshoot, hold — driving every model value.
 - Export the artboard as a PNG still or as a video of the timeline, on a transparent background if you want one.
+- No build step: a built-in device and screen layouts are drawn in code, so the site is static and deploys anywhere as-is.
 - Only the cover half rotates; the rear-camera half stays fixed.
 - Screen content uses a fixed front-view projection during folding. The outer UI stays aligned with its hinge-side left edge.
 - Blur and darkening follow the image coordinates, including the image edges. Maximum blur radius is 72 source pixels; darkening uses twice the transition strength, capped at black.
@@ -41,9 +42,14 @@ The preparation script downloads the original Star White USDZ and UI images from
 
 ## Interface
 
-The window is a workspace with three floating shells over it: the top bar carries the project
-name, the artboard shape and colour, and Export; the inspector sits on the left; the timeline
-runs along the bottom. The artboard is centred between them and is the only thing exported.
+The window is a workspace with floating shells over it, laid out the way a design tool is: the
+top bar carries the project name, artboard shape and colour, and Export; an **Objects** list on
+the left picks what you are editing; the **properties inspector** on the right shows only that
+object's controls; the timeline runs along the bottom. The artboard is centred between them and
+is the only thing exported.
+
+Selecting Device, Screens, Artboard or Environment swaps the inspector, which keeps each panel
+short instead of one long scroll.
 
 Type is [Inter](https://fonts.google.com/specimen/Inter), loaded from Google Fonts, over a
 system sans fallback. Drop the stylesheet link in `index.html` if the deployment must stay
@@ -92,7 +98,7 @@ The X/Y/Z fields rotate the environment map, which moves the reflections across 
 | --- | --- |
 | Color | Six preset swatches and a colour picker, mirrored by the top bar swatch |
 | Gradient | Two colour stops and an angle, following the CSS `linear-gradient` convention |
-| Image | One image, centred and scaled to cover the artboard |
+| Image | One image plus the same W/H/X/Y placement fields the screens use, where 100% covers the artboard |
 | None | No background; the canvas keeps its alpha and the artboard shows a checkerboard |
 
 The shape dropdown in the top bar sets the artboard to fit the window, or to 1:1, 16:9, 9:16
@@ -132,9 +138,18 @@ PNG keeps the alpha channel in every browser.
 | `main.js` | Three.js scene, fold deformation, projected UI, media, timeline and export |
 | `ui.js` | Default screen layouts |
 | `style.css` | Design tokens, floating shells, controls and responsive layout |
-| `scripts/prepare-assets.py` | Download and prepare the reference assets |
+| `scripts/prepare-assets.py` | Download and prepare the optional reference assets |
+| `fallback-device.js` | The built-in foldable, used when no reference model is present |
+| `wrangler.toml`, `_headers` | Cloudflare Pages output directory and caching |
 | `vercel.json` | Install and prepare assets during Vercel builds |
 | `vendor/three/` | Three.js runtime and required add-ons |
+
+## The reference model is optional
+
+The app ships with a device and two screen layouts drawn in code, so it runs as a plain static
+site with nothing downloaded and no build step. `scripts/prepare-assets.py` is only needed to
+swap in Apple's reference model and screenshots; when those files are absent the built-in ones
+are used and a note says so.
 
 ## Deploy
 
@@ -151,7 +166,26 @@ vercel --prod
 
 `.vercelignore` keeps local credentials and Git metadata out of deployments while including the prepared assets.
 
-For other static hosts, prepare the assets locally before publishing the project directory.
+### Cloudflare Pages
+
+`wrangler.toml` sets the output directory to the repository, and no build command is needed
+because the site is static:
+
+```sh
+npx wrangler pages deploy
+```
+
+To connect the Git repository in the Cloudflare dashboard instead, create a Pages project and
+leave **Build command** empty with **Build output directory** set to `/`. `_headers` sets
+long-lived caching for `vendor/` and `assets/`.
+
+To publish with Apple's reference model instead of the built-in device, set the build command
+to `pip install -r requirements-assets.txt && python scripts/prepare-assets.py`.
+
+### Other static hosts
+
+Upload the project directory as-is. Run `scripts/prepare-assets.py` first only if you want the
+reference model.
 
 ## License and sources
 

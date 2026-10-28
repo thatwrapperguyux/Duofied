@@ -3,6 +3,7 @@ import { USDLoader } from 'three/addons/loaders/USDLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadDefaultUIs } from './ui.js';
+import { createFallbackDevice } from './fallback-device.js';
 
 const viewport = document.querySelector('#viewport');
 const scene = new THREE.Scene();
@@ -103,7 +104,15 @@ const TRANSFORM_FIELDS = [
   { name: 'y', short: 'Y', min: -100, max: 100 },
 ];
 const media = { inner: null, outer: null };
-const transforms = { inner: { ...TRANSFORM_DEFAULTS }, outer: { ...TRANSFORM_DEFAULTS } };
+const transforms = {
+  inner: { ...TRANSFORM_DEFAULTS },
+  outer: { ...TRANSFORM_DEFAULTS },
+  backdrop: { ...TRANSFORM_DEFAULTS },
+};
+function redraw(target) {
+  if (target === 'backdrop') drawBackground();
+  else drawScreen(target);
+}
 
 function mediaSize(entry) {
   return entry.kind === 'video'
@@ -150,23 +159,23 @@ for (const group of document.querySelectorAll('[data-screen-transform]')) {
   reset.disabled = true;
   reset.addEventListener('click', () => {
     for (const [name, value] of Object.entries(TRANSFORM_DEFAULTS)) setTransform(kind, name, value);
-    drawScreen(kind);
+    redraw(kind);
   });
   group.append(reset);
   group.querySelectorAll('[data-range]').forEach(range => range.addEventListener('input', () => {
     setTransform(kind, range.dataset.range, Number(range.value));
-    drawScreen(kind);
+    redraw(kind);
   }));
   group.querySelectorAll('[data-number]').forEach(number => {
     const name = number.dataset.number;
     number.addEventListener('input', () => {
       if (number.value === '' || !Number.isFinite(Number(number.value))) return;
       setTransform(kind, name, Number(number.value), false);
-      drawScreen(kind);
+      redraw(kind);
     });
     number.addEventListener('change', () => {
       setTransform(kind, name, Number(number.value) || TRANSFORM_DEFAULTS[name]);
-      drawScreen(kind);
+      redraw(kind);
     });
   });
 }
@@ -180,7 +189,7 @@ function setTransform(kind, name, value, echo = true) {
   // Echoing back mid-edit would fight the caret, so typing waits for the commit.
   if (echo) group.querySelector(`[data-number="${name}"]`).value = clamped;
 }
-for (const kind of ['inner', 'outer']) {
+for (const kind of ['inner', 'outer', 'backdrop']) {
   for (const [name, value] of Object.entries(TRANSFORM_DEFAULTS)) setTransform(kind, name, value);
 }
 
@@ -301,6 +310,13 @@ function applyScreens() {
     button.setAttribute('aria-selected', String(button.dataset.uiTheme === uiTheme)));
   document.querySelector('#media-sections').hidden = uiTheme !== 'custom';
 }
+// Objects panel: picking one shows its properties, Figma style.
+document.querySelectorAll('[data-layer]').forEach(button => button.addEventListener('click', () => {
+  const layer = button.dataset.layer;
+  document.querySelectorAll('[data-layer]').forEach(tab =>
+    tab.setAttribute('aria-pressed', String(tab.dataset.layer === layer)));
+  document.querySelectorAll('.group').forEach(group => { group.hidden = group.dataset.group !== layer; });
+}));
 document.querySelectorAll('[data-ui-theme]').forEach(button => button.addEventListener('click', () => {
   uiTheme = button.dataset.uiTheme;
   if (uiTheme !== 'custom') defaultTheme = uiTheme;
@@ -472,9 +488,14 @@ function drawBackground() {
   context.fillRect(0, 0, rect.width, rect.height);
   if (backgroundMode === 'image' && backdrop) {
     const source = backdrop.element;
+    const place = transforms.backdrop;
+    // 100% covers the artboard; the fields scale and shift from there.
     const cover = Math.max(rect.width / source.naturalWidth, rect.height / source.naturalHeight);
-    const width2 = source.naturalWidth * cover, height2 = source.naturalHeight * cover;
-    context.drawImage(source, (rect.width - width2) / 2, (rect.height - height2) / 2, width2, height2);
+    const drawn = source.naturalWidth * cover * place.width / 100;
+    const high = source.naturalHeight * cover * place.height / 100;
+    context.drawImage(source,
+      (rect.width - drawn) / 2 + rect.width * place.x / 100,
+      (rect.height - high) / 2 + rect.height * place.y / 100, drawn, high);
   }
   backgroundTexture.needsUpdate = true;
 }
@@ -483,6 +504,9 @@ function setBackdrop(entry) {
   backdrop = entry;
   const panel = document.querySelector('[data-loaded="backdrop"]');
   panel.hidden = !entry;
+  const place = document.querySelector('[data-screen-transform="backdrop"]');
+  if (place) place.hidden = !entry;
+  if (!entry) for (const [name, value] of Object.entries(TRANSFORM_DEFAULTS)) setTransform('backdrop', name, value);
   if (entry) {
     panel.querySelector('.loaded-name').textContent = entry.name;
     panel.querySelector('.loaded-preview').style.backgroundImage = `url("${entry.url}")`;
@@ -975,12 +999,19 @@ vec4 bendStrip(vec3 p) {
 }
 #endif
 `;
+let usingFallback = false;
+let device;
 try {
-  const model = await new USDLoader().loadAsync('./assets/iPhone_Duo_Render.usdc');
-  model.scale.multiplyScalar(100);
-  model.updateMatrixWorld(true);
+  device = await new USDLoader().loadAsync('./assets/iPhone_Duo_Render.usdc');
+} catch {
+  device = createFallbackDevice();
+  usingFallback = true;
+}
+try {
+  device.scale.multiplyScalar(100);
+  device.updateMatrixWorld(true);
   const count = { moving: 0, fixed: 0, flexible: 0 };
-  model.traverse(object => {
+  device.traverse(object => {
     if (!object.isMesh) return;
     const geometry = object.geometry.clone().applyMatrix4(object.matrixWorld);
     geometry.translate(0, -5.8974, 0);
@@ -1041,14 +1072,15 @@ try {
     phone.add(mesh);
     count[flexible ? 'flexible' : moving ? 'moving' : 'fixed']++;
   });
-  console.info('Official model ready', JSON.stringify({ ...count, sourceMeshes: phone.children.length, innerUI: true, outerUI: true, fixedHalf: 'rear camera' }));
+  console.info('Model ready', JSON.stringify({ ...count, sourceMeshes: phone.children.length, fallback: usingFallback }));
   applyScreens();
   applyFrame();
   ready = true;
   enableUI();
   setPlayhead(0);
+  if (usingFallback) say('Using the built-in device. Run the asset script for the reference model.');
 } catch (error) {
-  alert('Unable to load the model. Refresh the page to try again.');
+  say('The device could not be built. Refresh the page to try again.');
   console.error(error);
 }
 

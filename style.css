@@ -2,7 +2,8 @@
   --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
   --gap:14px;
   --top-h:52px;
-  --panel-w:318px;
+  --panel-w:300px;
+  --layers-w:184px;
   --timeline-h:132px;
   --workspace:#eceef1;
   --glass:rgba(255,255,255,.82);
@@ -40,8 +41,8 @@ svg{display:block}
 /* Workspace ----------------------------------------------------------- */
 .stage{position:fixed;inset:0;background:var(--workspace)}
 .frame{position:absolute;
-  inset:calc(var(--top-h) + var(--gap) * 2 + 10px) calc(var(--gap) + 10px)
-        calc(var(--timeline-h) + var(--gap) * 2 + 10px) calc(var(--panel-w) + var(--gap) * 2 + 10px);
+  inset:calc(var(--top-h) + var(--gap) * 2 + 10px) calc(var(--panel-w) + var(--gap) * 2 + 10px)
+        calc(var(--timeline-h) + var(--gap) * 2 + 10px) calc(var(--layers-w) + var(--gap) * 2 + 10px);
   display:grid;place-items:center}
 #viewport{width:100%;height:100%;overflow:hidden;border-radius:var(--r-lg);background:#fff;
   box-shadow:0 20px 60px -30px rgba(15,17,24,.55),0 0 0 1px rgba(15,17,24,.05)}
@@ -61,8 +62,18 @@ canvas{display:block;outline:none}
 .floating{position:fixed;z-index:3;background:var(--glass);backdrop-filter:blur(20px) saturate(1.6);
   -webkit-backdrop-filter:blur(20px) saturate(1.6);border-radius:var(--r-lg);box-shadow:var(--shadow-float)}
 .bar-top{top:var(--gap);left:var(--gap);right:var(--gap);height:var(--top-h);display:flex;align-items:center;gap:10px;padding:0 12px}
-.inspector{top:calc(var(--top-h) + var(--gap) * 2);left:var(--gap);width:var(--panel-w);
+.inspector{top:calc(var(--top-h) + var(--gap) * 2);right:var(--gap);width:var(--panel-w);
   bottom:calc(var(--timeline-h) + var(--gap) * 2);display:flex;flex-direction:column;overflow:hidden}
+.layers{top:calc(var(--top-h) + var(--gap) * 2);left:var(--gap);width:var(--layers-w);
+  padding:12px 10px;display:flex;flex-direction:column;gap:2px}
+.panel-title{margin:0 0 6px 6px;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.layer{display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border:0;border-radius:var(--r-sm);
+  background:none;font-size:12.5px;color:var(--muted);text-align:left;transition:background .15s,color .15s}
+.layer svg{width:15px;height:15px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.layer:hover:not(:disabled){background:var(--panel-2);color:var(--text)}
+.layer[aria-pressed=true]{background:var(--panel);color:var(--text);font-weight:500;box-shadow:var(--shadow-1)}
+.group[hidden]{display:none}
+.divider{height:1px;margin:3px 0;background:var(--line)}
 .timeline{left:var(--gap);right:var(--gap);bottom:var(--gap);height:var(--timeline-h);padding:12px 16px 14px;display:flex;flex-direction:column;gap:10px}
 
 /* Top bar ------------------------------------------------------------- */
@@ -230,14 +241,17 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;bac
 .toast[hidden]{display:none}
 
 /* Narrow screens ------------------------------------------------------ */
-@media(max-width:980px){
-  :root{--panel-w:0px;--timeline-h:110px}
-  .frame{inset:calc(var(--top-h) + var(--gap) * 2) var(--gap) calc(var(--timeline-h) + 46dvh + var(--gap) * 2) var(--gap)}
-  .inspector{left:var(--gap);right:var(--gap);width:auto;top:auto;height:46dvh;
+@media(max-width:1080px){
+  :root{--panel-w:0px;--layers-w:0px;--timeline-h:110px}
+  .frame{inset:calc(var(--top-h) + var(--gap) * 2) var(--gap) calc(var(--timeline-h) + 44dvh + var(--gap) * 2) var(--gap)}
+  .layers{top:calc(var(--top-h) + var(--gap) * 2);left:var(--gap);right:var(--gap);width:auto;
+    flex-direction:row;overflow-x:auto;padding:8px}
+  .panel-title{display:none}
+  .layer{width:auto;flex-shrink:0;white-space:nowrap}
+  .inspector{left:var(--gap);right:var(--gap);width:auto;top:auto;height:44dvh;
     bottom:calc(var(--timeline-h) + var(--gap) * 2)}
   .bar-centre{margin:0 0 0 auto}
   .project-name{width:88px}
-  .tag{display:none}
 }
 @media(max-width:620px){
   .bar-centre .select-chip{display:none}
