@@ -193,12 +193,108 @@ for (const kind of ['inner', 'outer', 'backdrop']) {
   for (const [name, value] of Object.entries(TRANSFORM_DEFAULTS)) setTransform(kind, name, value);
 }
 
-function setMedia(kind, entry) {
-  const previous = media[kind];
-  if (previous) {
-    if (previous.kind === 'video') previous.element.pause();
-    URL.revokeObjectURL(previous.url);
+const library = [];
+let assetCount = 0;
+const assetGrid = document.querySelector('#asset-grid');
+const applyRow = document.querySelector('#apply-row');
+let selectedAsset = null;
+
+function assetThumbnail(entry) {
+  if (entry.kind === 'image') return entry.url;
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 160;
+    canvas.height = 120;
+    canvas.getContext('2d').drawImage(entry.element, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', .7);
+  } catch {
+    return '';
   }
+}
+function addAsset(entry) {
+  const item = { ...entry, id: `asset-${++assetCount}`, thumb: assetThumbnail(entry) };
+  library.push(item);
+  renderLibrary();
+  return item;
+}
+function removeAsset(id) {
+  const index = library.findIndex(item => item.id === id);
+  if (index < 0) return;
+  const [item] = library.splice(index, 1);
+  for (const kind of ['inner', 'outer']) if (media[kind] === item) setMedia(kind, null);
+  if (backdrop === item) setBackdrop(null);
+  if (item.kind === 'video') item.element.pause();
+  URL.revokeObjectURL(item.url);
+  if (selectedAsset === item.id) selectedAsset = null;
+  renderLibrary();
+}
+function renderLibrary() {
+  assetGrid.replaceChildren();
+  for (const item of library) {
+    const tile = document.createElement('button');
+    tile.type = 'button';
+    tile.className = 'asset';
+    tile.draggable = true;
+    tile.dataset.asset = item.id;
+    tile.title = item.name;
+    tile.setAttribute('aria-pressed', String(selectedAsset === item.id));
+    tile.setAttribute('aria-label', `${item.name}, ${item.kind}`);
+    if (item.thumb) tile.style.backgroundImage = `url("${item.thumb}")`;
+    tile.innerHTML = (item.kind === 'video' ? '<span class="asset-badge">VIDEO</span>' : '')
+      + '<span class="asset-remove" role="presentation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></span>'
+      + `<span class="asset-name"></span>`;
+    tile.querySelector('.asset-name').textContent = item.name;
+    assetGrid.append(tile);
+  }
+  document.querySelector('#library-empty').hidden = library.length > 0;
+  applyRow.hidden = !selectedAsset;
+}
+assetGrid.addEventListener('click', event => {
+  const tile = event.target.closest('.asset');
+  if (!tile) return;
+  if (event.target.closest('.asset-remove')) {
+    removeAsset(tile.dataset.asset);
+    return;
+  }
+  selectedAsset = selectedAsset === tile.dataset.asset ? null : tile.dataset.asset;
+  renderLibrary();
+});
+assetGrid.addEventListener('dragstart', event => {
+  const tile = event.target.closest('.asset');
+  if (!tile) return;
+  event.dataTransfer.setData('text/duofied-asset', tile.dataset.asset);
+  event.dataTransfer.effectAllowed = 'copy';
+});
+applyRow.querySelectorAll('[data-apply]').forEach(button => button.addEventListener('click', () => {
+  const item = library.find(entry => entry.id === selectedAsset);
+  if (item) applyAsset(button.dataset.apply, item);
+}));
+function applyAsset(target, item) {
+  if (target === 'backdrop') {
+    if (item.kind !== 'image') { say('The backdrop takes an image.'); return; }
+    setBackgroundMode('image');
+    setBackdrop(item);
+    say(`${item.name} set as the backdrop`);
+    return;
+  }
+  setMedia(target, item);
+  uiTheme = 'custom';
+  applyScreens();
+  say(`${item.name} on the ${target === 'inner' ? 'second' : 'first'} screen`);
+}
+const assetInput = document.querySelector('#asset-upload');
+document.querySelector('#import-assets').addEventListener('click', () => assetInput.click());
+assetInput.addEventListener('change', async () => {
+  const files = [...assetInput.files];
+  assetInput.value = '';
+  for (const file of files) {
+    const entry = await readMedia(file);
+    if (entry) addAsset(entry);
+  }
+  if (files.length) say(`${files.length} file${files.length > 1 ? 's' : ''} added`);
+});
+
+function setMedia(kind, entry) {
   media[kind] = entry;
   const panel = document.querySelector(`[data-loaded="${kind}"]`);
   panel.hidden = !entry;
@@ -206,7 +302,7 @@ function setMedia(kind, entry) {
     panel.querySelector('.loaded-name').textContent = entry.name;
     panel.querySelector('.loaded-kind').textContent = entry.kind === 'video' ? 'Video' : 'Image';
     panel.querySelector('.loaded-preview').style.backgroundImage =
-      entry.kind === 'image' ? `url("${entry.url}")` : '';
+      entry.thumb ? `url("${entry.thumb}")` : '';
     panel.querySelector('.loaded-preview').style.backgroundColor = entry.kind === 'video' ? '#16171c' : '';
   }
   const group = document.querySelector(`[data-screen-transform="${kind}"]`);
@@ -268,7 +364,7 @@ mediaInput.addEventListener('change', async () => {
   if (!file) return;
   const entry = await readMedia(file);
   if (!entry) return;
-  setMedia(mediaTarget, entry);
+  setMedia(mediaTarget, addAsset(entry));
   uiTheme = 'custom';
   applyScreens();
   setModel({ fold: mediaTarget === 'inner' ? 180 : 0 });
@@ -281,17 +377,23 @@ document.querySelectorAll('[data-drop]').forEach(zone => {
   zone.addEventListener('drop', async event => {
     event.preventDefault();
     zone.classList.remove('over');
-    const file = event.dataTransfer?.files?.[0];
-    if (!file || !ready) return;
-    if (target === 'backdrop') {
-      const entry = await readMedia(file);
-      if (entry?.kind === 'image') setBackdrop(entry);
-      else if (entry) say('The backdrop takes an image.');
+    if (!ready) return;
+    const assetId = event.dataTransfer?.getData('text/duofied-asset');
+    if (assetId) {
+      const item = library.find(entry => entry.id === assetId);
+      if (item) applyAsset(target, item);
       return;
     }
+    const file = event.dataTransfer?.files?.[0];
+    if (!file) return;
     const entry = await readMedia(file);
     if (!entry) return;
-    setMedia(target, entry);
+    if (target === 'backdrop') {
+      if (entry.kind === 'image') setBackdrop(addAsset(entry));
+      else say('The backdrop takes an image.');
+      return;
+    }
+    setMedia(target, addAsset(entry));
     uiTheme = 'custom';
     applyScreens();
   });
@@ -500,7 +602,6 @@ function drawBackground() {
   backgroundTexture.needsUpdate = true;
 }
 function setBackdrop(entry) {
-  if (backdrop) URL.revokeObjectURL(backdrop.url);
   backdrop = entry;
   const panel = document.querySelector('[data-loaded="backdrop"]');
   panel.hidden = !entry;
@@ -509,7 +610,7 @@ function setBackdrop(entry) {
   if (!entry) for (const [name, value] of Object.entries(TRANSFORM_DEFAULTS)) setTransform('backdrop', name, value);
   if (entry) {
     panel.querySelector('.loaded-name').textContent = entry.name;
-    panel.querySelector('.loaded-preview').style.backgroundImage = `url("${entry.url}")`;
+    panel.querySelector('.loaded-preview').style.backgroundImage = `url("${entry.thumb || entry.url}")`;
   }
   drawBackground();
 }
@@ -518,7 +619,7 @@ backdropInput.addEventListener('change', async () => {
   backdropInput.value = '';
   if (!file) return;
   const entry = await readMedia(file);
-  if (entry?.kind === 'image') setBackdrop(entry);
+  if (entry?.kind === 'image') setBackdrop(addAsset(entry));
   else if (entry) say('The backdrop takes an image.');
 });
 function setBackgroundMode(mode) {

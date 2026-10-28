@@ -66,6 +66,24 @@
     </button>
   </nav>
 
+  <section class="floating library" aria-label="Assets">
+    <div class="library-head">
+      <p class="panel-title">Assets</p>
+      <button class="icon-button small" type="button" id="import-assets" aria-label="Import files" title="Import files" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+    </div>
+    <div class="asset-grid" id="asset-grid"></div>
+    <p class="library-empty" id="library-empty">Uploaded images and videos collect here for reuse.</p>
+    <div class="apply-row" id="apply-row" hidden>
+      <span>Apply to</span>
+      <button type="button" data-apply="outer" title="First screen" disabled>S1</button>
+      <button type="button" data-apply="inner" title="Second screen" disabled>S2</button>
+      <button type="button" data-apply="backdrop" title="Artboard backdrop" disabled>BG</button>
+    </div>
+    <input id="asset-upload" type="file" accept="image/*,video/*" multiple hidden disabled>
+  </section>
+
   <aside class="floating inspector" aria-label="Properties">
     <div class="inspector-scroll">
 

@@ -12,6 +12,7 @@ A browser-based study of foldable screen transitions, built with Three.js.
 - Environment presets with their own rotation, and an artboard that can be a colour, gradient, image, or nothing at all.
 - A keyframe timeline with per-keyframe easing — ease in/out, linear, overshoot, hold — driving every model value.
 - Export the artboard as a PNG still or as a video of the timeline, on a transparent background if you want one.
+- An assets panel that keeps every uploaded file for reuse across screens and the backdrop.
 - No build step: a built-in device and screen layouts are drawn in code, so the site is static and deploys anywhere as-is.
 - Only the cover half rotates; the rear-camera half stays fixed.
 - Screen content uses a fixed front-view projection during folding. The outer UI stays aligned with its hinge-side left edge.
@@ -49,7 +50,21 @@ object's controls; the timeline runs along the bottom. The artboard is centred b
 is the only thing exported.
 
 Selecting Device, Screens, Artboard or Environment swaps the inspector, which keeps each panel
-short instead of one long scroll.
+short instead of one long scroll. Below it, **Assets** holds every file brought into the
+project.
+
+## Assets
+
+Anything uploaded — to a screen, to the backdrop, or through the **+** button, which takes
+several files at once — is kept as a thumbnail in the Assets panel, so a file is read once and
+reused from then on. Videos carry a badge and a still from their first frame.
+
+Click a tile to select it, then send it somewhere with **S1** (first screen), **S2** (second
+screen) or **BG** (artboard backdrop); or drag a tile straight onto a screen's drop zone. The
+same file can sit on both screens at once, and replacing one leaves the other alone. Removing a
+tile with its **×** takes it off whatever was using it.
+
+Below 1080px wide the panel is hidden, since the workspace has no room for it.
 
 Type is [Inter](https://fonts.google.com/specimen/Inter), loaded from Google Fonts, over a
 system sans fallback. Drop the stylesheet link in `index.html` if the deployment must stay

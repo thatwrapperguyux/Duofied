@@ -3,7 +3,8 @@
   --gap:14px;
   --top-h:52px;
   --panel-w:300px;
-  --layers-w:184px;
+  --layers-w:212px;
+  --layers-h:174px;
   --timeline-h:132px;
   --workspace:#eceef1;
   --glass:rgba(255,255,255,.82);
@@ -64,8 +65,35 @@ canvas{display:block;outline:none}
 .bar-top{top:var(--gap);left:var(--gap);right:var(--gap);height:var(--top-h);display:flex;align-items:center;gap:10px;padding:0 12px}
 .inspector{top:calc(var(--top-h) + var(--gap) * 2);right:var(--gap);width:var(--panel-w);
   bottom:calc(var(--timeline-h) + var(--gap) * 2);display:flex;flex-direction:column;overflow:hidden}
-.layers{top:calc(var(--top-h) + var(--gap) * 2);left:var(--gap);width:var(--layers-w);
+.layers{top:calc(var(--top-h) + var(--gap) * 2);left:var(--gap);width:var(--layers-w);height:var(--layers-h);
   padding:12px 10px;display:flex;flex-direction:column;gap:2px}
+.library{top:calc(var(--top-h) + var(--layers-h) + var(--gap) * 3);left:var(--gap);width:var(--layers-w);
+  bottom:calc(var(--timeline-h) + var(--gap) * 2);padding:12px 10px;display:flex;flex-direction:column;gap:8px}
+.library-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.library-head .panel-title{margin:0 0 0 6px}
+.asset-grid{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:grid;
+  grid-template-columns:1fr 1fr;gap:6px;align-content:start}
+.asset-grid:empty{display:none}
+.asset{position:relative;aspect-ratio:1;padding:0;border:1px solid var(--line);border-radius:var(--r-sm);
+  background:var(--panel-2) center/cover no-repeat;overflow:hidden;cursor:grab}
+.asset:active{cursor:grabbing}
+.asset[aria-pressed=true]{box-shadow:0 0 0 2px var(--panel),0 0 0 3px var(--brand)}
+.asset-name{position:absolute;left:0;right:0;bottom:0;padding:3px 5px;color:#fff;font-size:9px;text-align:left;
+  background:linear-gradient(transparent,rgba(8,9,12,.78));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.asset-badge{position:absolute;top:4px;left:4px;padding:1px 4px;border-radius:4px;background:rgba(8,9,12,.65);
+  color:#fff;font-size:8px;font-weight:600;letter-spacing:.05em}
+.asset-remove{position:absolute;top:3px;right:3px;width:17px;height:17px;display:grid;place-items:center;
+  padding:0;border:0;border-radius:50%;background:rgba(8,9,12,.6);color:#fff;opacity:0;transition:opacity .15s}
+.asset:hover .asset-remove,.asset[aria-pressed=true] .asset-remove{opacity:1}
+.asset-remove svg{width:9px;height:9px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round}
+.library-empty{margin:0 6px;font-size:10.5px;line-height:1.5;color:var(--muted)}
+.library-empty[hidden]{display:none}
+.apply-row{display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--muted)}
+.apply-row[hidden]{display:none}
+.apply-row>span{margin-right:auto;padding-left:6px}
+.apply-row button{padding:4px 7px;border:1px solid var(--line);border-radius:6px;background:var(--panel);
+  font-size:10.5px;font-weight:500;color:var(--text)}
+.apply-row button:hover:not(:disabled){border-color:var(--line-strong);background:var(--panel-2)}
 .panel-title{margin:0 0 6px 6px;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
 .layer{display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border:0;border-radius:var(--r-sm);
   background:none;font-size:12.5px;color:var(--muted);text-align:left;transition:background .15s,color .15s}
@@ -242,7 +270,7 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;bac
 
 /* Narrow screens ------------------------------------------------------ */
 @media(max-width:1080px){
-  :root{--panel-w:0px;--layers-w:0px;--timeline-h:110px}
+  :root{--panel-w:0px;--layers-w:0px;--layers-h:0px;--timeline-h:110px}
   .frame{inset:calc(var(--top-h) + var(--gap) * 2) var(--gap) calc(var(--timeline-h) + 44dvh + var(--gap) * 2) var(--gap)}
   .layers{top:calc(var(--top-h) + var(--gap) * 2);left:var(--gap);right:var(--gap);width:auto;
     flex-direction:row;overflow-x:auto;padding:8px}
@@ -250,6 +278,7 @@ input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;bac
   .layer{width:auto;flex-shrink:0;white-space:nowrap}
   .inspector{left:var(--gap);right:var(--gap);width:auto;top:auto;height:44dvh;
     bottom:calc(var(--timeline-h) + var(--gap) * 2)}
+  .library{display:none}
   .bar-centre{margin:0 0 0 auto}
   .project-name{width:88px}
 }
