@@ -1078,7 +1078,7 @@ try {
   ready = true;
   enableUI();
   setPlayhead(0);
-  if (usingFallback) say('Using the built-in device. Run the asset script for the reference model.');
+  if (usingFallback) say('Reference model not found — showing the built-in device. See the README to add it.');
 } catch (error) {
   say('The device could not be built. Refresh the page to try again.');
   console.error(error);

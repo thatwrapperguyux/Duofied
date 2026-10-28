@@ -182,8 +182,27 @@ To connect the Git repository instead, create a Pages project with **Build comma
 **Build output directory** set to `/`. `_headers` sets long-lived caching for `vendor/` and
 `assets/`.
 
-To publish with Apple's reference model instead of the built-in device, set the build command
-to `pip install -r requirements-assets.txt && python scripts/prepare-assets.py`.
+### Publishing with Apple's reference model
+
+The drag-and-drop uploader runs no build step, so it can only ever publish the built-in device.
+To get the reference model into a deploy, the preparation script has to run first — either on
+your machine or in the host's build:
+
+- **Upload flow.** Run `scripts/prepare-assets.py` locally (see *Run locally*), then drag the
+  project folder up with the `assets/` directory it created. Drag-and-drop uploads whatever is
+  in the folder, and `assets/` is only excluded from Git, not from the upload.
+- **Git flow.** Point the Pages project at the repository, set **Build output directory** to `/`
+  and the build command to:
+
+  ```sh
+  pip install -r requirements-assets.txt && python scripts/prepare-assets.py
+  ```
+
+  Set the `PYTHON_VERSION` environment variable to `3.12`; `usd-core` has no wheel for newer
+  Pythons and the build fails on the default.
+
+Vercel already does this — `vercel.json` carries the same step — which is the quickest route if
+you want the reference model without configuring anything.
 
 ### Other static hosts
 
