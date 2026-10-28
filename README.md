@@ -140,7 +140,7 @@ PNG keeps the alpha channel in every browser.
 | `style.css` | Design tokens, floating shells, controls and responsive layout |
 | `scripts/prepare-assets.py` | Download and prepare the optional reference assets |
 | `fallback-device.js` | The built-in foldable, used when no reference model is present |
-| `wrangler.toml`, `_headers` | Cloudflare Pages output directory and caching |
+| `_headers` | Long-lived caching for the vendored and prepared assets |
 | `vercel.json` | Install and prepare assets during Vercel builds |
 | `vendor/three/` | Three.js runtime and required add-ons |
 
@@ -166,18 +166,21 @@ vercel --prod
 
 `.vercelignore` keeps local credentials and Git metadata out of deployments while including the prepared assets.
 
-### Cloudflare Pages
+### Cloudflare
 
-`wrangler.toml` sets the output directory to the repository, and no build command is needed
-because the site is static:
+The site is static with no build step, so the dashboard's drag-and-drop upload works: unzip the
+project and drop the **folder** onto *Upload and deploy*. The project deliberately carries no
+`wrangler.toml` — the uploader rejects projects that have one, assuming they need a build.
+
+From the command line, name the directory and the project rather than using a config file:
 
 ```sh
-npx wrangler pages deploy
+npx wrangler pages deploy . --project-name=duofied
 ```
 
-To connect the Git repository in the Cloudflare dashboard instead, create a Pages project and
-leave **Build command** empty with **Build output directory** set to `/`. `_headers` sets
-long-lived caching for `vendor/` and `assets/`.
+To connect the Git repository instead, create a Pages project with **Build command** empty and
+**Build output directory** set to `/`. `_headers` sets long-lived caching for `vendor/` and
+`assets/`.
 
 To publish with Apple's reference model instead of the built-in device, set the build command
 to `pip install -r requirements-assets.txt && python scripts/prepare-assets.py`.

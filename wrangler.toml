@@ -1,5 +1,0 @@
-# Cloudflare Pages: the site is static and needs no build step, so the output
-# directory is the repository itself.
-name = "duofied"
-compatibility_date = "2026-10-28"
-pages_build_output_dir = "."
